@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Task, TaskStatus, TaskPriority, addTask, updateTask, getTasks } from "@/utils/storage";
+import { Task, TaskStatus, TaskPriority, createTask, updateTask } from "@/utils/api";
 
 interface TaskFormProps {
   editTask?: Task | null;
+  existingProjects?: string[];
+  existingEmployees?: string[];
   onSave: () => void;
   onCancel: () => void;
 }
@@ -12,7 +14,13 @@ interface TaskFormProps {
 const STATUS_OPTIONS: TaskStatus[] = ["Not Started", "In Progress", "Complete", "On Hold"];
 const PRIORITY_OPTIONS: TaskPriority[] = ["High", "Medium", "Low"];
 
-export default function TaskForm({ editTask, onSave, onCancel }: TaskFormProps) {
+export default function TaskForm({
+  editTask,
+  existingProjects = [],
+  existingEmployees = [],
+  onSave,
+  onCancel,
+}: TaskFormProps) {
   const [project, setProject] = useState("");
   const [description, setDescription] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
@@ -20,14 +28,9 @@ export default function TaskForm({ editTask, onSave, onCancel }: TaskFormProps) 
   const [status, setStatus] = useState<TaskStatus>("Not Started");
   const [priority, setPriority] = useState<TaskPriority>("Medium");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [existingProjects, setExistingProjects] = useState<string[]>([]);
-  const [existingEmployees, setExistingEmployees] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const tasks = getTasks();
-    setExistingProjects(Array.from(new Set(tasks.map((t) => t.project))).sort());
-    setExistingEmployees(Array.from(new Set(tasks.map((t) => t.assignedTo))).sort());
-
     if (editTask) {
       setProject(editTask.project);
       setDescription(editTask.description);
@@ -47,19 +50,23 @@ export default function TaskForm({ editTask, onSave, onCancel }: TaskFormProps) 
     return e;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs = validate();
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      return;
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setSaving(true);
+    try {
+      if (editTask) {
+        await updateTask(editTask.taskId, { project, description, assignedTo, eta, status, priority });
+      } else {
+        await createTask({ project, description, assignedTo, eta, status, priority });
+      }
+      onSave();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
     }
-    if (editTask) {
-      updateTask(editTask.id, { project, description, assignedTo, eta, status, priority });
-    } else {
-      addTask({ project, description, assignedTo, eta, status, priority });
-    }
-    onSave();
   };
 
   const inputClass = (field: string) =>
@@ -78,7 +85,7 @@ export default function TaskForm({ editTask, onSave, onCancel }: TaskFormProps) 
           type="text"
           list="project-list"
           value={project}
-          onChange={(e) => { setProject(e.target.value); setErrors((prev) => ({ ...prev, project: "" })); }}
+          onChange={(e) => { setProject(e.target.value); setErrors((p) => ({ ...p, project: "" })); }}
           placeholder="e.g. Loan Model"
           className={inputClass("project")}
         />
@@ -95,7 +102,7 @@ export default function TaskForm({ editTask, onSave, onCancel }: TaskFormProps) 
         </label>
         <textarea
           value={description}
-          onChange={(e) => { setDescription(e.target.value); setErrors((prev) => ({ ...prev, description: "" })); }}
+          onChange={(e) => { setDescription(e.target.value); setErrors((p) => ({ ...p, description: "" })); }}
           placeholder="Describe the task..."
           rows={3}
           className={`${inputClass("description")} resize-none`}
@@ -112,7 +119,7 @@ export default function TaskForm({ editTask, onSave, onCancel }: TaskFormProps) 
           type="text"
           list="employee-list"
           value={assignedTo}
-          onChange={(e) => { setAssignedTo(e.target.value); setErrors((prev) => ({ ...prev, assignedTo: "" })); }}
+          onChange={(e) => { setAssignedTo(e.target.value); setErrors((p) => ({ ...p, assignedTo: "" })); }}
           placeholder="e.g. Alice Johnson"
           className={inputClass("assignedTo")}
         />
@@ -130,7 +137,7 @@ export default function TaskForm({ editTask, onSave, onCancel }: TaskFormProps) 
         <input
           type="date"
           value={eta}
-          onChange={(e) => { setEta(e.target.value); setErrors((prev) => ({ ...prev, eta: "" })); }}
+          onChange={(e) => { setEta(e.target.value); setErrors((p) => ({ ...p, eta: "" })); }}
           className={inputClass("eta")}
         />
         {errors.eta && <p className="text-red-500 text-xs mt-1">{errors.eta}</p>}
@@ -164,9 +171,16 @@ export default function TaskForm({ editTask, onSave, onCancel }: TaskFormProps) 
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
-          className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors text-sm"
+          disabled={saving}
+          className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
         >
-          {editTask ? "Update Task" : "Add Task"}
+          {saving && (
+            <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+          )}
+          {saving ? "Saving..." : editTask ? "Update Task" : "Add Task"}
         </button>
         <button
           type="button"

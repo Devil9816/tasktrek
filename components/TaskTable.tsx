@@ -1,6 +1,6 @@
 "use client";
 
-import { Task, isOverdue } from "@/utils/storage";
+import { Task, isOverdue } from "@/utils/api";
 
 interface Column {
   key: string;
@@ -11,7 +11,7 @@ interface TaskTableProps {
   tasks: Task[];
   columns: Column[];
   onEdit?: (task: Task) => void;
-  onDelete?: (id: string) => void;
+  onDelete?: (taskId: string) => void;
   showActions?: boolean;
 }
 
@@ -49,7 +49,7 @@ export default function TaskTable({ tasks, columns, onEdit, onDelete, showAction
   const renderCell = (task: Task, key: string) => {
     switch (key) {
       case "id":
-        return <span className="font-mono text-xs text-slate-500">{task.id}</span>;
+        return <span className="font-mono text-xs text-slate-500">{task.taskId}</span>;
       case "description":
         return <span className="font-medium text-slate-800">{task.description}</span>;
       case "project":
@@ -119,12 +119,8 @@ export default function TaskTable({ tasks, columns, onEdit, onDelete, showAction
             const overdue = isOverdue(task);
             return (
               <tr
-                key={task.id}
-                className={`transition-colors ${
-                  overdue
-                    ? "bg-red-50 hover:bg-red-100"
-                    : "bg-white hover:bg-slate-50"
-                }`}
+                key={task._id}
+                className={`transition-colors ${overdue ? "bg-red-50 hover:bg-red-100" : "bg-white hover:bg-slate-50"}`}
               >
                 {columns.map((col) => (
                   <td key={col.key} className="px-4 py-3 whitespace-nowrap">
@@ -144,7 +140,7 @@ export default function TaskTable({ tasks, columns, onEdit, onDelete, showAction
                         Edit
                       </button>
                       <button
-                        onClick={() => onDelete?.(task.id)}
+                        onClick={() => onDelete?.(task.taskId)}
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

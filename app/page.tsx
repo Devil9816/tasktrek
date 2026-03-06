@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Task, getTasks, deleteTask, getProjects, isOverdue, seedDemoData } from "@/utils/storage";
+import { Task, fetchTasks, deleteTask, getProjects, isOverdue, seedDemoData } from "@/utils/api";
 import TaskTable from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
 
@@ -26,84 +26,66 @@ const PROJECT_COLORS = [
 export default function ProjectView() {
   const [projects, setProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(() => {
-    seedDemoData();
-    const allTasks = getTasks();
-    const allProjects = getProjects();
-    setTasks(allTasks);
-    setProjects(allProjects);
-    if (allProjects.length > 0 && !selectedProject) {
-      setSelectedProject(allProjects[0]);
+  const loadData = useCallback(async (keepProject?: string) => {
+    setLoading(true);
+    try {
+      await seedDemoData();
+      const tasks = await fetchTasks();
+      const projs = getProjects(tasks);
+      setAllTasks(tasks);
+      setProjects(projs);
+      const active = keepProject || (projs.length > 0 ? projs[0] : null);
+      setSelectedProject(active);
+    } finally {
+      setLoading(false);
     }
-  }, [selectedProject]);
-
-  useEffect(() => {
-    loadData();
   }, []);
 
-  useEffect(() => {
-    let filtered = selectedProject
-      ? tasks.filter((t) => t.project === selectedProject)
-      : tasks;
+  useEffect(() => { loadData(); }, [loadData]);
 
+  useEffect(() => {
+    let filtered = selectedProject ? allTasks.filter((t) => t.project === selectedProject) : allTasks;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (t) =>
-          t.description.toLowerCase().includes(q) ||
-          t.assignedTo.toLowerCase().includes(q) ||
-          t.id.toLowerCase().includes(q)
+        (t) => t.description.toLowerCase().includes(q) || t.assignedTo.toLowerCase().includes(q) || t.taskId.toLowerCase().includes(q)
       );
     }
-
-    if (statusFilter !== "All") {
-      filtered = filtered.filter((t) => t.status === statusFilter);
-    }
-
+    if (statusFilter !== "All") filtered = filtered.filter((t) => t.status === statusFilter);
     setFilteredTasks(filtered);
-  }, [tasks, selectedProject, searchQuery, statusFilter]);
+  }, [allTasks, selectedProject, searchQuery, statusFilter]);
 
-  const handleDelete = (id: string) => {
-    setDeleteConfirm(id);
+  const handleDelete = (taskId: string) => setDeleteConfirm(taskId);
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    await deleteTask(deleteConfirm);
+    setDeleteConfirm(null);
+    loadData(selectedProject || undefined);
   };
 
-  const confirmDelete = () => {
-    if (deleteConfirm) {
-      deleteTask(deleteConfirm);
-      setDeleteConfirm(null);
-      loadData();
-    }
-  };
-
-  const handleEdit = (task: Task) => {
-    setEditTask(task);
-    setShowForm(true);
-  };
-
-  const handleFormSave = () => {
-    setShowForm(false);
-    setEditTask(null);
-    loadData();
-  };
+  const handleEdit = (task: Task) => { setEditTask(task); setShowForm(true); };
+  const handleFormSave = () => { setShowForm(false); setEditTask(null); loadData(selectedProject || undefined); };
 
   const getProjectStats = (project: string) => {
-    const projectTasks = tasks.filter((t) => t.project === project);
-    const completed = projectTasks.filter((t) => t.status === "Complete").length;
-    const overdue = projectTasks.filter((t) => isOverdue(t)).length;
-    return { total: projectTasks.length, completed, overdue };
+    const pt = allTasks.filter((t) => t.project === project);
+    return { total: pt.length, completed: pt.filter((t) => t.status === "Complete").length, overdue: pt.filter((t) => isOverdue(t)).length };
   };
 
   const overdueTasks = filteredTasks.filter((t) => isOverdue(t)).length;
   const completedTasks = filteredTasks.filter((t) => t.status === "Complete").length;
   const inProgressTasks = filteredTasks.filter((t) => t.status === "In Progress").length;
+  const existingProjects = getProjects(allTasks);
+  const existingEmployees = Array.from(new Set(allTasks.map((t) => t.assignedTo))).sort();
 
   return (
     <div className="flex h-[calc(100vh-64px)]">
@@ -113,49 +95,39 @@ export default function ProjectView() {
           <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Workspace</h2>
           <p className="text-sm font-semibold text-slate-700">Projects</p>
         </div>
-
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          {projects.length === 0 ? (
+          {loading ? (
+            <div className="space-y-2 p-2">
+              {[1,2,3].map(i => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}
+            </div>
+          ) : projects.length === 0 ? (
             <p className="text-xs text-slate-400 px-2 py-4 text-center">No projects yet.<br />Add tasks to create projects.</p>
           ) : (
             projects.map((project, idx) => {
               const stats = getProjectStats(project);
               const isSelected = selectedProject === project;
               const colorClass = PROJECT_COLORS[idx % PROJECT_COLORS.length];
-
               return (
                 <button
                   key={project}
                   onClick={() => { setSelectedProject(project); setSearchQuery(""); setStatusFilter("All"); }}
-                  className={`w-full text-left px-3 py-3 rounded-xl transition-all duration-150 group ${
-                    isSelected
-                      ? "bg-indigo-50 border border-indigo-200 shadow-sm"
-                      : "hover:bg-slate-50 border border-transparent"
-                  }`}
+                  className={`w-full text-left px-3 py-3 rounded-xl transition-all duration-150 group ${isSelected ? "bg-indigo-50 border border-indigo-200 shadow-sm" : "hover:bg-slate-50 border border-transparent"}`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colorClass} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
                       {project.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"}`}>
-                        {project}
-                      </p>
+                      <p className={`text-sm font-semibold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"}`}>{project}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-slate-400">{stats.total} tasks</span>
-                        {stats.overdue > 0 && (
-                          <span className="text-xs text-red-500 font-medium">• {stats.overdue} overdue</span>
-                        )}
+                        {stats.overdue > 0 && <span className="text-xs text-red-500 font-medium">• {stats.overdue} overdue</span>}
                       </div>
                     </div>
                   </div>
-                  {/* Progress bar */}
                   {stats.total > 0 && (
                     <div className="mt-2 h-1 bg-slate-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500 rounded-full transition-all"
-                        style={{ width: `${(stats.completed / stats.total) * 100}%` }}
-                      />
+                      <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(stats.completed / stats.total) * 100}%` }} />
                     </div>
                   )}
                 </button>
@@ -163,7 +135,6 @@ export default function ProjectView() {
             })
           )}
         </nav>
-
         <div className="p-3 border-t border-slate-100">
           <button
             onClick={() => { setShowForm(true); setEditTask(null); }}
@@ -179,15 +150,18 @@ export default function ProjectView() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
-        {selectedProject ? (
+        {loading ? (
+          <div className="p-6 space-y-4">
+            <div className="h-8 w-48 bg-slate-200 rounded-lg animate-pulse" />
+            <div className="grid grid-cols-4 gap-4">{[1,2,3,4].map(i => <div key={i} className="h-24 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+            <div className="h-64 bg-slate-100 rounded-xl animate-pulse" />
+          </div>
+        ) : selectedProject ? (
           <div className="p-6 space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">{selectedProject}</h1>
-                <p className="text-sm text-slate-500 mt-0.5">
-                  {filteredTasks.length} task{filteredTasks.length !== 1 ? "s" : ""} shown
-                </p>
+                <p className="text-sm text-slate-500 mt-0.5">{filteredTasks.length} task{filteredTasks.length !== 1 ? "s" : ""} shown</p>
               </div>
               <button
                 onClick={() => { setShowForm(true); setEditTask(null); }}
@@ -242,14 +216,7 @@ export default function ProjectView() {
               </select>
             </div>
 
-            {/* Table */}
-            <TaskTable
-              tasks={filteredTasks}
-              columns={PROJECT_COLUMNS}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              showActions={true}
-            />
+            <TaskTable tasks={filteredTasks} columns={PROJECT_COLUMNS} onEdit={handleEdit} onDelete={handleDelete} showActions={true} />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">
@@ -262,35 +229,26 @@ export default function ProjectView() {
         )}
       </div>
 
-      {/* Modal — Task Form */}
+      {/* Task Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-900">
-                {editTask ? "Edit Task" : "Add New Task"}
-              </h2>
-              <button
-                onClick={() => { setShowForm(false); setEditTask(null); }}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-              >
+              <h2 className="text-lg font-bold text-slate-900">{editTask ? "Edit Task" : "Add New Task"}</h2>
+              <button onClick={() => { setShowForm(false); setEditTask(null); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
             <div className="p-6">
-              <TaskForm
-                editTask={editTask}
-                onSave={handleFormSave}
-                onCancel={() => { setShowForm(false); setEditTask(null); }}
-              />
+              <TaskForm editTask={editTask} existingProjects={existingProjects} existingEmployees={existingEmployees} onSave={handleFormSave} onCancel={() => { setShowForm(false); setEditTask(null); }} />
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirm Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
@@ -306,18 +264,8 @@ export default function ProjectView() {
               </div>
             </div>
             <div className="flex gap-3">
-              <button
-                onClick={confirmDelete}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
-              >
-                Delete
-              </button>
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl transition-colors text-sm"
-              >
-                Cancel
-              </button>
+              <button onClick={confirmDelete} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">Delete</button>
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl transition-colors text-sm">Cancel</button>
             </div>
           </div>
         </div>
