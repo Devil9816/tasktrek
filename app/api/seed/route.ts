@@ -30,7 +30,12 @@ export async function POST() {
       { taskId: "TASK-1009", project: "Collections Model", description: "QA testing & bug fixes", assignedTo: "Alice Johnson", eta: addDays(20), status: "Not Started", priority: "Low" },
     ];
 
-    await Task.insertMany(demo);
+    // Use upsert so re-running seed never throws duplicate key errors
+    await Promise.all(
+      demo.map((task) =>
+        Task.updateOne({ taskId: task.taskId }, { $setOnInsert: task }, { upsert: true })
+      )
+    );
     return NextResponse.json({ success: true, message: `Seeded ${demo.length} demo tasks.` });
   } catch (error) {
     console.error("POST /api/seed error:", error);
