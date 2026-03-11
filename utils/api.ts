@@ -6,7 +6,7 @@ export interface Task {
   taskId: string;
   project: string;
   description: string;
-  assignedTo: string;
+  assignedTo: string[];
   eta: string;
   status: TaskStatus;
   priority: TaskPriority;
@@ -62,9 +62,46 @@ export async function deleteTask(taskId: string): Promise<void> {
   if (!json.success) throw new Error(json.error || "Failed to delete task");
 }
 
-// Seed demo data
+// Seed demo data (only runs if DB has no tasks)
 export async function seedDemoData(): Promise<void> {
   await fetch("/api/seed", { method: "POST" });
+}
+
+// Remove demo/seed tasks only (Loan Model, CRM Tool, Collections Model — TASK-1001..1009)
+export async function removeDemoData(): Promise<{ deletedCount: number }> {
+  const res = await fetch("/api/seed", { method: "DELETE" });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || "Failed to remove demo data");
+  return { deletedCount: json.deletedCount ?? 0 };
+}
+
+const PROJECTS_BASE = "/api/projects";
+
+// Fetch all project names (from API: Project collection + tasks)
+export async function fetchProjects(): Promise<string[]> {
+  const res = await fetch(PROJECTS_BASE, { cache: "no-store" });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || "Failed to fetch projects");
+  return json.data;
+}
+
+// Create a project (name only)
+export async function createProject(name: string): Promise<void> {
+  const res = await fetch(PROJECTS_BASE, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: name.trim() }),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || "Failed to create project");
+}
+
+// Delete a project and all its tasks (explicit delete)
+export async function deleteProject(name: string): Promise<{ deletedTasks: number }> {
+  const res = await fetch(`${PROJECTS_BASE}/${encodeURIComponent(name)}`, { method: "DELETE" });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || "Failed to delete project");
+  return { deletedTasks: json.deletedTasks ?? 0 };
 }
 
 // Helpers
@@ -73,7 +110,8 @@ export function getProjects(tasks: Task[]): string[] {
 }
 
 export function getEmployees(tasks: Task[]): string[] {
-  return Array.from(new Set(tasks.map((t) => t.assignedTo))).sort();
+  const names = tasks.flatMap((t) => t.assignedTo || []);
+  return Array.from(new Set(names)).sort();
 }
 
 export function isOverdue(task: Task): boolean {

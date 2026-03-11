@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Task from "@/models/Task";
+import { normalizeAssignedTo, parseAssignedTo } from "@/lib/taskUtils";
 
 // GET /api/tasks/[id] — fetch a single task by taskId
 export async function GET(
@@ -13,14 +14,15 @@ export async function GET(
     if (!task) {
       return NextResponse.json({ success: false, error: "Task not found" }, { status: 404 });
     }
-    return NextResponse.json({ success: true, data: task });
+    const normalized = normalizeAssignedTo(task);
+    return NextResponse.json({ success: true, data: normalized });
   } catch (error) {
     console.error("GET /api/tasks/[id] error:", error);
     return NextResponse.json({ success: false, error: "Failed to fetch task" }, { status: 500 });
   }
 }
 
-// PUT /api/tasks/[id] — update a task by taskId
+// PUT /api/tasks/[id] — update a task (assignedTo optional; accepts string or string[])
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -30,9 +32,21 @@ export async function PUT(
     const body = await req.json();
     const { project, description, assignedTo, eta, status, priority } = body;
 
+    const update: Record<string, unknown> = { project, description, eta, status, priority };
+    if (assignedTo !== undefined) {
+      const assignees = parseAssignedTo(assignedTo);
+      if (assignees.length === 0) {
+        return NextResponse.json(
+          { success: false, error: "assignedTo must be at least one name (string or array)" },
+          { status: 400 }
+        );
+      }
+      update.assignedTo = assignees;
+    }
+
     const task = await Task.findOneAndUpdate(
       { taskId: params.id },
-      { project, description, assignedTo, eta, status, priority },
+      update,
       { new: true, runValidators: true }
     ).lean();
 
@@ -40,7 +54,8 @@ export async function PUT(
       return NextResponse.json({ success: false, error: "Task not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: task });
+    const normalized = normalizeAssignedTo(task);
+    return NextResponse.json({ success: true, data: normalized });
   } catch (error) {
     console.error("PUT /api/tasks/[id] error:", error);
     return NextResponse.json({ success: false, error: "Failed to update task" }, { status: 500 });

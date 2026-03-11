@@ -17,7 +17,7 @@ interface TaskTableProps {
 
 export const STATUS_STYLES: Record<string, string> = {
   "Not Started": "bg-slate-100 text-slate-600 border border-slate-300",
-  "In Progress": "bg-blue-100 text-blue-700 border border-blue-300",
+  "In Progress": "bg-red-100 text-red-700 border border-red-300",
   "Complete": "bg-emerald-100 text-emerald-700 border border-emerald-300",
   "On Hold": "bg-amber-100 text-amber-700 border border-amber-300",
 };
@@ -54,19 +54,26 @@ export default function TaskTable({ tasks, columns, onEdit, onDelete, showAction
         return <span className="font-medium text-slate-800">{task.description}</span>;
       case "project":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-xs font-medium border border-indigo-200">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-xs font-medium border border-red-200">
             {task.project}
           </span>
         );
-      case "assignedTo":
+      case "assignedTo": {
+        const assignees = Array.isArray(task.assignedTo) ? task.assignedTo : task.assignedTo ? [task.assignedTo] : [];
         return (
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-              {task.assignedTo.charAt(0).toUpperCase()}
-            </div>
-            <span className="text-sm text-slate-700">{task.assignedTo}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            {assignees.map((name) => (
+              <div key={name} className="flex items-center gap-1.5">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-400 to-rose-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {name.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm text-slate-700">{name}</span>
+              </div>
+            ))}
+            {assignees.length === 0 && <span className="text-sm text-slate-400">—</span>}
           </div>
         );
+      }
       case "eta": {
         const overdue = isOverdue(task);
         return (
@@ -132,7 +139,7 @@ export default function TaskTable({ tasks, columns, onEdit, onDelete, showAction
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => onEdit?.(task)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

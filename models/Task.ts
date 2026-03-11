@@ -4,7 +4,7 @@ export interface ITask extends Document {
   taskId: string;
   project: string;
   description: string;
-  assignedTo: string;
+  assignedTo: string[];
   eta: string;
   status: "Not Started" | "In Progress" | "Complete" | "On Hold";
   priority: "High" | "Medium" | "Low";
@@ -29,10 +29,18 @@ const TaskSchema = new Schema<ITask>(
       required: true,
       trim: true,
     },
+    // Supports both string (legacy production data) and string[] (multiple assignees)
     assignedTo: {
-      type: String,
+      type: Schema.Types.Mixed,
       required: true,
-      trim: true,
+      validate: {
+        validator: (v: unknown) => {
+          if (typeof v === "string") return v.trim().length > 0;
+          if (Array.isArray(v)) return v.length > 0 && v.every((s) => typeof s === "string" && String(s).trim().length > 0);
+          return false;
+        },
+        message: "assignedTo must be a non-empty string or non-empty array of names",
+      },
     },
     eta: {
       type: String,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Task, fetchTasks, isOverdue, seedDemoData } from "@/utils/api";
+import { Task, fetchTasks, isOverdue, getEmployees } from "@/utils/api";
 import TaskTable from "@/components/TaskTable";
 
 const EMPLOYEE_COLUMNS = [
@@ -14,12 +14,12 @@ const EMPLOYEE_COLUMNS = [
 ];
 
 const AVATAR_COLORS = [
-  "from-indigo-400 to-purple-500",
-  "from-blue-400 to-cyan-500",
+  "from-red-400 to-rose-500",
+  "from-rose-400 to-pink-500",
   "from-emerald-400 to-teal-500",
   "from-orange-400 to-red-500",
   "from-pink-400 to-rose-500",
-  "from-violet-400 to-indigo-500",
+  "from-red-500 to-rose-600",
 ];
 
 export default function EmployeeView() {
@@ -35,10 +35,9 @@ export default function EmployeeView() {
     const load = async () => {
       setLoading(true);
       try {
-        await seedDemoData();
         const tasks = await fetchTasks();
         setAllTasks(tasks);
-        const emps = Array.from(new Set(tasks.map((t) => t.assignedTo))).sort();
+        const emps = getEmployees(tasks);
         setEmployees(emps);
         if (emps.length > 0) setSelectedEmployee(emps[0]);
       } finally {
@@ -50,7 +49,7 @@ export default function EmployeeView() {
 
   useEffect(() => {
     if (!selectedEmployee) { setEmployeeTasks([]); return; }
-    let filtered = allTasks.filter((t) => t.assignedTo === selectedEmployee);
+    let filtered = allTasks.filter((t) => Array.isArray(t.assignedTo) && t.assignedTo.includes(selectedEmployee));
     if (statusFilter !== "All") filtered = filtered.filter((t) => t.status === statusFilter);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -62,7 +61,7 @@ export default function EmployeeView() {
   }, [selectedEmployee, allTasks, statusFilter, searchQuery]);
 
   const getStats = (employee: string) => {
-    const tasks = allTasks.filter((t) => t.assignedTo === employee);
+    const tasks = allTasks.filter((t) => Array.isArray(t.assignedTo) && t.assignedTo.includes(employee));
     return {
       total: tasks.length,
       completed: tasks.filter((t) => t.status === "Complete").length,
@@ -97,14 +96,14 @@ export default function EmployeeView() {
                 <button
                   key={emp}
                   onClick={() => { setSelectedEmployee(emp); setStatusFilter("All"); setSearchQuery(""); }}
-                  className={`w-full text-left px-3 py-3 rounded-xl transition-all duration-150 ${isSelected ? "bg-indigo-50 border border-indigo-200 shadow-sm" : "hover:bg-slate-50 border border-transparent"}`}
+                  className={`w-full text-left px-3 py-3 rounded-xl transition-all duration-150 ${isSelected ? "bg-red-50 border border-red-200 shadow-sm" : "hover:bg-slate-50 border border-transparent"}`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}>
                       {emp.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"}`}>{emp}</p>
+                      <p className={`text-sm font-semibold truncate ${isSelected ? "text-red-700" : "text-slate-700"}`}>{emp}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-slate-400">{stats.total} tasks</span>
                         {stats.overdue > 0 && <span className="text-xs text-red-500 font-medium">• {stats.overdue} overdue</span>}
@@ -183,13 +182,13 @@ export default function EmployeeView() {
                   placeholder="Search tasks..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 <option value="All">All Statuses</option>
                 <option value="Not Started">Not Started</option>

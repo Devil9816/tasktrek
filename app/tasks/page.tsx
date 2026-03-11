@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Task, fetchTasks, deleteTask, isOverdue, seedDemoData, getProjects } from "@/utils/api";
+import { Task, fetchTasks, deleteTask, isOverdue, getProjects, getEmployees } from "@/utils/api";
 import TaskTable from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
 import { STATUS_STYLES, PRIORITY_STYLES } from "@/components/TaskTable";
@@ -31,7 +31,6 @@ export default function TaskManager() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      await seedDemoData();
       const allTasks = await fetchTasks();
       setTasks(allTasks);
     } finally {
@@ -46,7 +45,11 @@ export default function TaskManager() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (t) => t.description.toLowerCase().includes(q) || t.assignedTo.toLowerCase().includes(q) || t.project.toLowerCase().includes(q) || t.taskId.toLowerCase().includes(q)
+        (t) =>
+          t.description.toLowerCase().includes(q) ||
+          (Array.isArray(t.assignedTo) ? t.assignedTo.some((a) => a.toLowerCase().includes(q)) : false) ||
+          t.project.toLowerCase().includes(q) ||
+          t.taskId.toLowerCase().includes(q)
       );
     }
     if (statusFilter !== "All") filtered = filtered.filter((t) => t.status === statusFilter);
@@ -66,7 +69,7 @@ export default function TaskManager() {
   const handleFormSave = () => { setShowForm(false); setEditTask(null); loadData(); };
 
   const projects = getProjects(tasks);
-  const existingEmployees = Array.from(new Set(tasks.map((t) => t.assignedTo))).sort();
+  const existingEmployees = getEmployees(tasks);
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === "Complete").length;
   const overdueTasks = tasks.filter((t) => isOverdue(t)).length;
@@ -82,7 +85,7 @@ export default function TaskManager() {
         </div>
         <button
           onClick={() => { setShowForm(true); setEditTask(null); }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+          className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -102,7 +105,7 @@ export default function TaskManager() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { label: "Total Tasks", value: totalTasks, color: "text-slate-700", bg: "bg-white border-slate-200" },
-              { label: "In Progress", value: inProgressTasks, color: "text-blue-700", bg: "bg-blue-50 border-blue-200" },
+              { label: "In Progress", value: inProgressTasks, color: "text-red-700", bg: "bg-red-50 border-red-200" },
               { label: "Completed", value: completedTasks, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
               { label: "Overdue", value: overdueTasks, color: "text-red-700", bg: "bg-red-50 border-red-200" },
             ].map((stat) => (
@@ -151,21 +154,21 @@ export default function TaskManager() {
                 placeholder="Search by task, project, or person..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
               />
             </div>
-            <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500">
               <option value="All">All Projects</option>
               {projects.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500">
               <option value="All">All Statuses</option>
               <option value="Not Started">Not Started</option>
               <option value="In Progress">In Progress</option>
               <option value="Complete">Complete</option>
               <option value="On Hold">On Hold</option>
             </select>
-            <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500">
               <option value="All">All Priorities</option>
               <option value="High">High</option>
               <option value="Medium">Medium</option>
@@ -178,7 +181,7 @@ export default function TaskManager() {
               Showing <span className="font-semibold text-slate-700">{filteredTasks.length}</span> of <span className="font-semibold text-slate-700">{totalTasks}</span> tasks
             </p>
             {(searchQuery || statusFilter !== "All" || priorityFilter !== "All" || projectFilter !== "All") && (
-              <button onClick={() => { setSearchQuery(""); setStatusFilter("All"); setPriorityFilter("All"); setProjectFilter("All"); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+              <button onClick={() => { setSearchQuery(""); setStatusFilter("All"); setPriorityFilter("All"); setProjectFilter("All"); }} className="text-xs text-red-600 hover:text-red-800 font-medium">
                 Clear filters
               </button>
             )}

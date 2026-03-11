@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Task, fetchTasks, deleteTask, getProjects, isOverdue, seedDemoData } from "@/utils/api";
+import { Task, fetchTasks, deleteTask, fetchProjects, deleteProject, getEmployees, isOverdue } from "@/utils/api";
 import TaskTable from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
+import ProjectForm from "@/components/ProjectForm";
 
 const PROJECT_COLUMNS = [
   { key: "id", label: "Task ID" },
@@ -15,12 +16,12 @@ const PROJECT_COLUMNS = [
 ];
 
 const PROJECT_COLORS = [
-  "from-indigo-500 to-purple-600",
-  "from-blue-500 to-cyan-600",
-  "from-emerald-500 to-teal-600",
+  "from-red-500 to-rose-600",
+  "from-red-600 to-orange-500",
+  "from-rose-500 to-red-600",
   "from-orange-500 to-red-500",
   "from-pink-500 to-rose-600",
-  "from-violet-500 to-indigo-600",
+  "from-red-400 to-rose-500",
 ];
 
 export default function ProjectView() {
@@ -29,8 +30,10 @@ export default function ProjectView() {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [formMode, setFormMode] = useState<"addProject" | "addTask" | null>(null);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteProjectConfirm, setDeleteProjectConfirm] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [loading, setLoading] = useState(true);
@@ -38,12 +41,10 @@ export default function ProjectView() {
   const loadData = useCallback(async (keepProject?: string) => {
     setLoading(true);
     try {
-      await seedDemoData();
-      const tasks = await fetchTasks();
-      const projs = getProjects(tasks);
+      const [tasks, projs] = await Promise.all([fetchTasks(), fetchProjects()]);
       setAllTasks(tasks);
       setProjects(projs);
-      const active = keepProject || (projs.length > 0 ? projs[0] : null);
+      const active = keepProject && projs.includes(keepProject) ? keepProject : (projs.length > 0 ? projs[0] : null);
       setSelectedProject(active);
     } finally {
       setLoading(false);
@@ -57,7 +58,10 @@ export default function ProjectView() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (t) => t.description.toLowerCase().includes(q) || t.assignedTo.toLowerCase().includes(q) || t.taskId.toLowerCase().includes(q)
+        (t) =>
+          t.description.toLowerCase().includes(q) ||
+          (Array.isArray(t.assignedTo) ? t.assignedTo.some((a) => a.toLowerCase().includes(q)) : false) ||
+          t.taskId.toLowerCase().includes(q)
       );
     }
     if (statusFilter !== "All") filtered = filtered.filter((t) => t.status === statusFilter);
@@ -73,8 +77,11 @@ export default function ProjectView() {
     loadData(selectedProject || undefined);
   };
 
-  const handleEdit = (task: Task) => { setEditTask(task); setShowForm(true); };
-  const handleFormSave = () => { setShowForm(false); setEditTask(null); loadData(selectedProject || undefined); };
+  const handleEdit = (task: Task) => { setEditTask(task); setFormMode(null); setShowForm(true); };
+  const handleFormSave = () => { setShowForm(false); setFormMode(null); setEditTask(null); loadData(selectedProject || undefined); };
+  const openAddProject = () => { setFormMode("addProject"); setEditTask(null); setShowForm(true); };
+  const openAddTask = () => { setFormMode("addTask"); setEditTask(null); setShowForm(true); };
+  const closeForm = () => { setShowForm(false); setFormMode(null); setEditTask(null); };
 
   const getProjectStats = (project: string) => {
     const pt = allTasks.filter((t) => t.project === project);
@@ -84,8 +91,8 @@ export default function ProjectView() {
   const overdueTasks = filteredTasks.filter((t) => isOverdue(t)).length;
   const completedTasks = filteredTasks.filter((t) => t.status === "Complete").length;
   const inProgressTasks = filteredTasks.filter((t) => t.status === "In Progress").length;
-  const existingProjects = getProjects(allTasks);
-  const existingEmployees = Array.from(new Set(allTasks.map((t) => t.assignedTo))).sort();
+  const existingProjects = projects;
+  const existingEmployees = getEmployees(allTasks);
 
   return (
     <div className="flex h-[calc(100vh-64px)]">
@@ -101,7 +108,7 @@ export default function ProjectView() {
               {[1,2,3].map(i => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}
             </div>
           ) : projects.length === 0 ? (
-            <p className="text-xs text-slate-400 px-2 py-4 text-center">No projects yet.<br />Add tasks to create projects.</p>
+            <p className="text-xs text-slate-400 px-2 py-4 text-center">No projects yet.<br />Use &quot;Add Project&quot; below.</p>
           ) : (
             projects.map((project, idx) => {
               const stats = getProjectStats(project);
@@ -111,14 +118,14 @@ export default function ProjectView() {
                 <button
                   key={project}
                   onClick={() => { setSelectedProject(project); setSearchQuery(""); setStatusFilter("All"); }}
-                  className={`w-full text-left px-3 py-3 rounded-xl transition-all duration-150 group ${isSelected ? "bg-indigo-50 border border-indigo-200 shadow-sm" : "hover:bg-slate-50 border border-transparent"}`}
+                  className={`w-full text-left px-3 py-3 rounded-xl transition-all duration-150 group ${isSelected ? "bg-red-50 border border-red-200 shadow-sm" : "hover:bg-slate-50 border border-transparent"}`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colorClass} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
                       {project.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold truncate ${isSelected ? "text-indigo-700" : "text-slate-700"}`}>{project}</p>
+                      <p className={`text-sm font-semibold truncate ${isSelected ? "text-red-700" : "text-slate-700"}`}>{project}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-slate-400">{stats.total} tasks</span>
                         {stats.overdue > 0 && <span className="text-xs text-red-500 font-medium">• {stats.overdue} overdue</span>}
@@ -137,13 +144,15 @@ export default function ProjectView() {
         </nav>
         <div className="p-3 border-t border-slate-100">
           <button
-            onClick={() => { setShowForm(true); setEditTask(null); }}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors"
+            onClick={openAddProject}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors"
+            title="Add a new project (create first task under new project name)"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            Add Task
+            Add Project
           </button>
         </div>
       </aside>
@@ -158,27 +167,40 @@ export default function ProjectView() {
           </div>
         ) : selectedProject ? (
           <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">{selectedProject}</h1>
                 <p className="text-sm text-slate-500 mt-0.5">{filteredTasks.length} task{filteredTasks.length !== 1 ? "s" : ""} shown</p>
               </div>
-              <button
-                onClick={() => { setShowForm(true); setEditTask(null); }}
-                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Task
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setDeleteProjectConfirm(selectedProject)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors"
+                  title="Delete this project and all its tasks"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Delete project
+                </button>
+                <button
+                  onClick={openAddTask}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+                  title={`Add a task to ${selectedProject}`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  Add Task
+                </button>
+              </div>
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
                 { label: "Total Tasks", value: filteredTasks.length, color: "text-slate-700", bg: "bg-slate-100" },
-                { label: "In Progress", value: inProgressTasks, color: "text-blue-700", bg: "bg-blue-50" },
+                { label: "In Progress", value: inProgressTasks, color: "text-red-700", bg: "bg-red-50" },
                 { label: "Completed", value: completedTasks, color: "text-emerald-700", bg: "bg-emerald-50" },
                 { label: "Overdue", value: overdueTasks, color: "text-red-700", bg: "bg-red-50" },
               ].map((stat) => (
@@ -200,13 +222,13 @@ export default function ProjectView() {
                   placeholder="Search tasks..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 <option value="All">All Statuses</option>
                 <option value="Not Started">Not Started</option>
@@ -224,7 +246,7 @@ export default function ProjectView() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
             </svg>
             <p className="text-lg font-medium">Select a project to get started</p>
-            <p className="text-sm mt-1">Or add a task to create your first project</p>
+            <p className="text-sm mt-1">Or add a project using the sidebar</p>
           </div>
         )}
       </div>
@@ -234,21 +256,39 @@ export default function ProjectView() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-900">{editTask ? "Edit Task" : "Add New Task"}</h2>
-              <button onClick={() => { setShowForm(false); setEditTask(null); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+              <h2 className="text-lg font-bold text-slate-900">
+                {editTask ? "Edit Task" : formMode === "addProject" ? "Add New Project" : formMode === "addTask" && selectedProject ? `Add Task to ${selectedProject}` : "Add New Task"}
+              </h2>
+              <button onClick={closeForm} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
             <div className="p-6">
-              <TaskForm editTask={editTask} existingProjects={existingProjects} existingEmployees={existingEmployees} onSave={handleFormSave} onCancel={() => { setShowForm(false); setEditTask(null); }} />
+              {formMode === "addProject" ? (
+                <ProjectForm
+                  existingProjects={existingProjects}
+                  onSave={handleFormSave}
+                  onCancel={closeForm}
+                />
+              ) : (
+                <TaskForm
+                  editTask={editTask}
+                  existingProjects={existingProjects}
+                  existingEmployees={existingEmployees}
+                  defaultProject={formMode === "addTask" ? selectedProject ?? undefined : undefined}
+                  lockProject={formMode === "addTask" && !!selectedProject}
+                  onSave={handleFormSave}
+                  onCancel={closeForm}
+                />
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirm Modal */}
+      {/* Delete Task Confirm Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
@@ -266,6 +306,41 @@ export default function ProjectView() {
             <div className="flex gap-3">
               <button onClick={confirmDelete} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">Delete</button>
               <button onClick={() => setDeleteConfirm(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl transition-colors text-sm">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Project Confirm Modal */}
+      {deleteProjectConfirm && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900">Delete Project</h3>
+                <p className="text-sm text-slate-500">
+                  Delete &quot;{deleteProjectConfirm}&quot; and all its tasks? This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  if (!deleteProjectConfirm) return;
+                  await deleteProject(deleteProjectConfirm);
+                  setDeleteProjectConfirm(null);
+                  loadData();
+                }}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
+              >
+                Delete project
+              </button>
+              <button onClick={() => setDeleteProjectConfirm(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl transition-colors text-sm">Cancel</button>
             </div>
           </div>
         </div>

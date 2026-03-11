@@ -5,7 +5,7 @@ export interface Task {
   id: string;
   project: string;
   description: string;
-  assignedTo: string;
+  assignedTo: string[];
   eta: string; // ISO date string YYYY-MM-DD
   status: TaskStatus;
   priority: TaskPriority;
@@ -62,8 +62,8 @@ export function getProjects(): string[] {
 
 export function getEmployees(): string[] {
   const tasks = getTasks();
-  const set = new Set(tasks.map((t) => t.assignedTo));
-  return Array.from(set).sort();
+  const names = tasks.flatMap((t) => (Array.isArray(t.assignedTo) ? t.assignedTo : t.assignedTo ? [t.assignedTo] : []));
+  return Array.from(new Set(names)).sort();
 }
 
 export function isOverdue(task: Task): boolean {
@@ -90,96 +90,15 @@ export function seedDemoData(): void {
   };
 
   const demo: Task[] = [
-    {
-      id: "TASK-1001",
-      project: "Loan Model",
-      description: "Build credit scoring pipeline",
-      assignedTo: "Alice Johnson",
-      eta: addDays(5),
-      status: "In Progress",
-      priority: "High",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "TASK-1002",
-      project: "Loan Model",
-      description: "Data validation & cleaning",
-      assignedTo: "Bob Smith",
-      eta: addDays(-2),
-      status: "Not Started",
-      priority: "High",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "TASK-1003",
-      project: "Loan Model",
-      description: "Write unit tests for model",
-      assignedTo: "Alice Johnson",
-      eta: addDays(10),
-      status: "Not Started",
-      priority: "Medium",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "TASK-1004",
-      project: "CRM Tool",
-      description: "Design customer dashboard UI",
-      assignedTo: "Carol White",
-      eta: addDays(3),
-      status: "In Progress",
-      priority: "High",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "TASK-1005",
-      project: "CRM Tool",
-      description: "Integrate email notification system",
-      assignedTo: "Bob Smith",
-      eta: addDays(-1),
-      status: "On Hold",
-      priority: "Medium",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "TASK-1006",
-      project: "CRM Tool",
-      description: "Set up CI/CD pipeline",
-      assignedTo: "David Lee",
-      eta: addDays(7),
-      status: "Complete",
-      priority: "Low",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "TASK-1007",
-      project: "Collections Model",
-      description: "Define collection strategy rules",
-      assignedTo: "Carol White",
-      eta: addDays(-3),
-      status: "Not Started",
-      priority: "High",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "TASK-1008",
-      project: "Collections Model",
-      description: "Build reporting dashboard",
-      assignedTo: "David Lee",
-      eta: addDays(14),
-      status: "In Progress",
-      priority: "Medium",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "TASK-1009",
-      project: "Collections Model",
-      description: "QA testing & bug fixes",
-      assignedTo: "Alice Johnson",
-      eta: addDays(20),
-      status: "Not Started",
-      priority: "Low",
-      createdAt: new Date().toISOString(),
-    },
+    { id: "TASK-1001", project: "Loan Model", description: "Build credit scoring pipeline", assignedTo: ["Alice Johnson"], eta: addDays(5), status: "In Progress", priority: "High", createdAt: new Date().toISOString() },
+    { id: "TASK-1002", project: "Loan Model", description: "Data validation & cleaning", assignedTo: ["Bob Smith"], eta: addDays(-2), status: "Not Started", priority: "High", createdAt: new Date().toISOString() },
+    { id: "TASK-1003", project: "Loan Model", description: "Write unit tests for model", assignedTo: ["Alice Johnson"], eta: addDays(10), status: "Not Started", priority: "Medium", createdAt: new Date().toISOString() },
+    { id: "TASK-1004", project: "CRM Tool", description: "Design customer dashboard UI", assignedTo: ["Carol White"], eta: addDays(3), status: "In Progress", priority: "High", createdAt: new Date().toISOString() },
+    { id: "TASK-1005", project: "CRM Tool", description: "Integrate email notification system", assignedTo: ["Bob Smith"], eta: addDays(-1), status: "On Hold", priority: "Medium", createdAt: new Date().toISOString() },
+    { id: "TASK-1006", project: "CRM Tool", description: "Set up CI/CD pipeline", assignedTo: ["David Lee"], eta: addDays(7), status: "Complete", priority: "Low", createdAt: new Date().toISOString() },
+    { id: "TASK-1007", project: "Collections Model", description: "Define collection strategy rules", assignedTo: ["Carol White"], eta: addDays(-3), status: "Not Started", priority: "High", createdAt: new Date().toISOString() },
+    { id: "TASK-1008", project: "Collections Model", description: "Build reporting dashboard", assignedTo: ["David Lee"], eta: addDays(14), status: "In Progress", priority: "Medium", createdAt: new Date().toISOString() },
+    { id: "TASK-1009", project: "Collections Model", description: "QA testing & bug fixes", assignedTo: ["Alice Johnson"], eta: addDays(20), status: "Not Started", priority: "Low", createdAt: new Date().toISOString() },
   ];
 
   saveTasks(demo);
