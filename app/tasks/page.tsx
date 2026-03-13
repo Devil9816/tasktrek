@@ -5,6 +5,7 @@ import { Task, fetchTasks, deleteTask, updateTask, isOverdue, getProjects, getEm
 import TaskTable from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
 import { STATUS_STYLES, PRIORITY_STYLES } from "@/components/TaskTable";
+import { useEditMode } from "@/components/EditModeProvider";
 
 const ALL_COLUMNS = [
   { key: "id", label: "Task ID" },
@@ -17,6 +18,7 @@ const ALL_COLUMNS = [
 ];
 
 export default function TaskManager() {
+  const { isEditMode } = useEditMode();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -94,20 +96,22 @@ export default function TaskManager() {
           <h1 className="text-2xl font-bold text-slate-900">Task Manager</h1>
           <p className="text-sm text-slate-500 mt-0.5">Create, edit, and manage all tasks</p>
         </div>
-        <button
-          onClick={() => { setShowForm(true); setEditTask(null); }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Task
-        </button>
+        {isEditMode && (
+          <button
+            onClick={() => { setShowForm(true); setEditTask(null); }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Task
+          </button>
+        )}
       </div>
 
       {loading ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-4">{[1,2,3,4].map(i => <div key={i} className="h-24 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+          <div className="grid grid-cols-4 gap-4">{[1, 2, 3, 4].map(i => <div key={i} className="h-24 bg-slate-100 rounded-xl animate-pulse" />)}</div>
           <div className="h-64 bg-slate-100 rounded-xl animate-pulse" />
         </div>
       ) : (
@@ -205,7 +209,7 @@ export default function TaskManager() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onBumpEta={handleBumpEta}
-            showActions={true}
+            showActions={isEditMode}
           />
 
           {/* Completed tasks collapsible section */}
@@ -240,7 +244,7 @@ export default function TaskManager() {
                       onEdit={handleEdit}
                       onDelete={handleDelete}
                       onBumpEta={handleBumpEta}
-                      showActions={true}
+                      showActions={isEditMode}
                     />
                   </div>
                 )}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Task, fetchTasks, isOverdue, getEmployees } from "@/utils/api";
 import TaskTable from "@/components/TaskTable";
+import { useEditMode } from "@/components/EditModeProvider";
 
 const EMPLOYEE_COLUMNS = [
   { key: "id", label: "Task ID" },
@@ -23,6 +24,7 @@ const AVATAR_COLORS = [
 ];
 
 export default function EmployeeView() {
+  const { isEditMode } = useEditMode();
   const [employees, setEmployees] = useState<string[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
@@ -84,7 +86,7 @@ export default function EmployeeView() {
         </div>
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {loading ? (
-            <div className="space-y-2 p-2">{[1,2,3].map(i => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+            <div className="space-y-2 p-2">{[1, 2, 3].map(i => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}</div>
           ) : employees.length === 0 ? (
             <p className="text-xs text-slate-400 px-2 py-4 text-center">No employees yet.</p>
           ) : (
@@ -127,7 +129,7 @@ export default function EmployeeView() {
         {loading ? (
           <div className="p-6 space-y-4">
             <div className="h-14 w-64 bg-slate-200 rounded-xl animate-pulse" />
-            <div className="grid grid-cols-4 gap-4">{[1,2,3,4].map(i => <div key={i} className="h-24 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+            <div className="grid grid-cols-4 gap-4">{[1, 2, 3, 4].map(i => <div key={i} className="h-24 bg-slate-100 rounded-xl animate-pulse" />)}</div>
             <div className="h-64 bg-slate-100 rounded-xl animate-pulse" />
           </div>
         ) : selectedEmployee && selectedStats ? (
@@ -198,7 +200,7 @@ export default function EmployeeView() {
               </select>
             </div>
 
-            <TaskTable tasks={employeeTasks} columns={EMPLOYEE_COLUMNS} showActions={false} />
+            <TaskTable tasks={employeeTasks} columns={EMPLOYEE_COLUMNS} showActions={isEditMode} />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">

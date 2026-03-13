@@ -5,6 +5,7 @@ import { Task, fetchTasks, deleteTask, updateTask, fetchProjects, deleteProject,
 import TaskTable from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
 import ProjectForm from "@/components/ProjectForm";
+import { useEditMode } from "@/components/EditModeProvider";
 
 const PROJECT_COLUMNS = [
   { key: "id", label: "Task ID" },
@@ -25,6 +26,7 @@ const PROJECT_COLORS = [
 ];
 
 export default function ProjectView() {
+  const { isEditMode } = useEditMode();
   const [projects, setProjects] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
@@ -116,7 +118,7 @@ export default function ProjectView() {
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {loading ? (
             <div className="space-y-2 p-2">
-              {[1,2,3].map(i => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}
+              {[1, 2, 3].map(i => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}
             </div>
           ) : projects.length === 0 ? (
             <p className="text-xs text-slate-400 px-2 py-4 text-center">No projects yet.<br />Use &quot;Add Project&quot; below.</p>
@@ -153,19 +155,21 @@ export default function ProjectView() {
             })
           )}
         </nav>
-        <div className="p-3 border-t border-slate-100">
-          <button
-            onClick={openAddProject}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors"
-            title="Add a new project (create first task under new project name)"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Add Project
-          </button>
-        </div>
+        {isEditMode && (
+          <div className="p-3 border-t border-slate-100">
+            <button
+              onClick={openAddProject}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors"
+              title="Add a new project (create first task under new project name)"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Add Project
+            </button>
+          </div>
+        )}
       </aside>
 
       {/* Main Content */}
@@ -173,7 +177,7 @@ export default function ProjectView() {
         {loading ? (
           <div className="p-6 space-y-4">
             <div className="h-8 w-48 bg-slate-200 rounded-lg animate-pulse" />
-            <div className="grid grid-cols-4 gap-4">{[1,2,3,4].map(i => <div key={i} className="h-24 bg-slate-100 rounded-xl animate-pulse" />)}</div>
+            <div className="grid grid-cols-4 gap-4">{[1, 2, 3, 4].map(i => <div key={i} className="h-24 bg-slate-100 rounded-xl animate-pulse" />)}</div>
             <div className="h-64 bg-slate-100 rounded-xl animate-pulse" />
           </div>
         ) : selectedProject ? (
@@ -184,26 +188,30 @@ export default function ProjectView() {
                 <p className="text-sm text-slate-500 mt-0.5">{filteredTasks.length} task{filteredTasks.length !== 1 ? "s" : ""} shown</p>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setDeleteProjectConfirm(selectedProject)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors"
-                  title="Delete this project and all its tasks"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Delete project
-                </button>
-                <button
-                  onClick={openAddTask}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
-                  title={`Add a task to ${selectedProject}`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                  </svg>
-                  Add Task
-                </button>
+                {isEditMode && (
+                  <>
+                    <button
+                      onClick={() => setDeleteProjectConfirm(selectedProject)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors"
+                      title="Delete this project and all its tasks"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Delete project
+                    </button>
+                    <button
+                      onClick={openAddTask}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+                      title={`Add a task to ${selectedProject}`}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                      </svg>
+                      Add Task
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -256,7 +264,7 @@ export default function ProjectView() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onBumpEta={handleBumpEta}
-              showActions={true}
+              showActions={isEditMode}
             />
 
             {/* Completed tasks collapsible section */}
@@ -291,7 +299,7 @@ export default function ProjectView() {
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         onBumpEta={handleBumpEta}
-                        showActions={true}
+                        showActions={isEditMode}
                       />
                     </div>
                   )}

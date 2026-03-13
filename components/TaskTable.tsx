@@ -108,7 +108,7 @@ export default function TaskTable({ tasks, columns, onEdit, onDelete, onBumpEta,
                 </span>
               )}
             </span>
-            {onBumpEta && (
+            {onBumpEta && showActions && (
               <button
                 onClick={() => handleBump(task)}
                 disabled={!!bumpingId}
