@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Task, isOverdue } from "@/utils/api";
 
 interface Column {
@@ -12,6 +13,7 @@ interface TaskTableProps {
   columns: Column[];
   onEdit?: (task: Task) => void;
   onDelete?: (taskId: string) => void;
+  onBumpEta?: (task: Task, newEta: string) => Promise<void>;
   showActions?: boolean;
 }
 
@@ -34,7 +36,26 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function TaskTable({ tasks, columns, onEdit, onDelete, showActions = true }: TaskTableProps) {
+export default function TaskTable({ tasks, columns, onEdit, onDelete, onBumpEta, showActions = true }: TaskTableProps) {
+  const [bumpingId, setBumpingId] = useState<string | null>(null);
+
+  const handleBump = async (task: Task) => {
+    if (!onBumpEta || bumpingId) return;
+    setBumpingId(task.taskId);
+    try {
+      const current = task.eta ? new Date(task.eta + "T00:00:00") : new Date();
+      current.setDate(current.getDate() + 1);
+      // Use local date parts to avoid UTC timezone shift flipping the date back
+      const y = current.getFullYear();
+      const m = String(current.getMonth() + 1).padStart(2, "0");
+      const d = String(current.getDate()).padStart(2, "0");
+      const newEta = `${y}-${m}-${d}`;
+      await onBumpEta(task, newEta);
+    } finally {
+      setBumpingId(null);
+    }
+  };
+
   if (tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-slate-400">
@@ -76,15 +97,44 @@ export default function TaskTable({ tasks, columns, onEdit, onDelete, showAction
       }
       case "eta": {
         const overdue = isOverdue(task);
+        const isBumping = bumpingId === task.taskId;
         return (
-          <span className={`text-sm font-medium ${overdue ? "text-red-600" : "text-slate-600"}`}>
-            {formatDate(task.eta)}
-            {overdue && (
-              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-600 border border-red-200">
-                Overdue
-              </span>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-sm font-medium ${overdue ? "text-red-600" : "text-slate-600"}`}>
+              {formatDate(task.eta)}
+              {overdue && (
+                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-600 border border-red-200">
+                  Overdue
+                </span>
+              )}
+            </span>
+            {onBumpEta && (
+              <button
+                onClick={() => handleBump(task)}
+                disabled={!!bumpingId}
+                title="Push deadline by 1 day"
+                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-semibold border transition-colors
+                  ${isBumping
+                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-wait"
+                    : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-300 cursor-pointer"
+                  }`}
+              >
+                {isBumping ? (
+                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                ) : (
+                  <>
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                    </svg>
+                    1d
+                  </>
+                )}
+              </button>
             )}
-          </span>
+          </div>
         );
       }
       case "status":

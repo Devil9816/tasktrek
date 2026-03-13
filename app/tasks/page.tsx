@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Task, fetchTasks, deleteTask, isOverdue, getProjects, getEmployees } from "@/utils/api";
+import { Task, fetchTasks, deleteTask, updateTask, isOverdue, getProjects, getEmployees } from "@/utils/api";
 import TaskTable from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
 import { STATUS_STYLES, PRIORITY_STYLES } from "@/components/TaskTable";
@@ -68,6 +68,16 @@ export default function TaskManager() {
   };
   const handleEdit = (task: Task) => { setEditTask(task); setShowForm(true); };
   const handleFormSave = () => { setShowForm(false); setEditTask(null); loadData(); };
+  const handleBumpEta = async (task: Task, newEta: string) => {
+    // Optimistically update local state so the UI reflects the change instantly
+    setTasks((prev) => prev.map((t) => t.taskId === task.taskId ? { ...t, eta: newEta } : t));
+    try {
+      await updateTask(task.taskId, { eta: newEta });
+    } catch {
+      // Revert on failure
+      setTasks((prev) => prev.map((t) => t.taskId === task.taskId ? { ...t, eta: task.eta } : t));
+    }
+  };
 
   const projects = getProjects(tasks);
   const existingEmployees = getEmployees(tasks);
@@ -194,6 +204,7 @@ export default function TaskManager() {
             columns={ALL_COLUMNS}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onBumpEta={handleBumpEta}
             showActions={true}
           />
 
@@ -228,6 +239,7 @@ export default function TaskManager() {
                       columns={ALL_COLUMNS}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
+                      onBumpEta={handleBumpEta}
                       showActions={true}
                     />
                   </div>

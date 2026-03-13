@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Task, fetchTasks, deleteTask, fetchProjects, deleteProject, getEmployees, isOverdue } from "@/utils/api";
+import { Task, fetchTasks, deleteTask, updateTask, fetchProjects, deleteProject, getEmployees, isOverdue } from "@/utils/api";
 import TaskTable from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
 import ProjectForm from "@/components/ProjectForm";
@@ -80,6 +80,16 @@ export default function ProjectView() {
 
   const handleEdit = (task: Task) => { setEditTask(task); setFormMode(null); setShowForm(true); };
   const handleFormSave = () => { setShowForm(false); setFormMode(null); setEditTask(null); loadData(selectedProject || undefined); };
+  const handleBumpEta = async (task: Task, newEta: string) => {
+    // Optimistically update local state so the UI reflects the change instantly
+    setAllTasks((prev) => prev.map((t) => t.taskId === task.taskId ? { ...t, eta: newEta } : t));
+    try {
+      await updateTask(task.taskId, { eta: newEta });
+    } catch {
+      // Revert on failure
+      setAllTasks((prev) => prev.map((t) => t.taskId === task.taskId ? { ...t, eta: task.eta } : t));
+    }
+  };
   const openAddProject = () => { setFormMode("addProject"); setEditTask(null); setShowForm(true); };
   const openAddTask = () => { setFormMode("addTask"); setEditTask(null); setShowForm(true); };
   const closeForm = () => { setShowForm(false); setFormMode(null); setEditTask(null); };
@@ -245,6 +255,7 @@ export default function ProjectView() {
               columns={PROJECT_COLUMNS}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onBumpEta={handleBumpEta}
               showActions={true}
             />
 
@@ -279,6 +290,7 @@ export default function ProjectView() {
                         columns={PROJECT_COLUMNS}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        onBumpEta={handleBumpEta}
                         showActions={true}
                       />
                     </div>
