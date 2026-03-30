@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Task, fetchTasks, deleteTask, updateTask, isOverdue, getProjects, getEmployees } from "@/utils/api";
-import TaskTable from "@/components/TaskTable";
+import { Task, fetchTasks, deleteTask, updateTask, isOverdue, getProjects, getEmployees, sortTasksByEtaAndPriority } from "@/utils/api";
+import TaskTable, { type TaskInlineUpdates } from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
 import { STATUS_STYLES, PRIORITY_STYLES } from "@/components/TaskTable";
 import { useEditMode } from "@/components/EditModeProvider";
@@ -58,7 +58,7 @@ export default function TaskManager() {
     if (statusFilter !== "All") filtered = filtered.filter((t) => t.status === statusFilter);
     if (priorityFilter !== "All") filtered = filtered.filter((t) => t.priority === priorityFilter);
     if (projectFilter !== "All") filtered = filtered.filter((t) => t.project === projectFilter);
-    setFilteredTasks(filtered);
+    setFilteredTasks(sortTasksByEtaAndPriority(filtered));
   }, [tasks, searchQuery, statusFilter, priorityFilter, projectFilter]);
 
   const handleDelete = (taskId: string) => setDeleteConfirm(taskId);
@@ -78,6 +78,17 @@ export default function TaskManager() {
     } catch {
       // Revert on failure
       setTasks((prev) => prev.map((t) => t.taskId === task.taskId ? { ...t, eta: task.eta } : t));
+    }
+  };
+
+  const handleInlineUpdate = async (task: Task, updates: TaskInlineUpdates) => {
+    const prev = task;
+    setTasks((p) => p.map((t) => (t.taskId === task.taskId ? { ...t, ...updates } : t)));
+    try {
+      const updated = await updateTask(task.taskId, updates);
+      setTasks((p) => p.map((t) => (t.taskId === task.taskId ? updated : t)));
+    } catch {
+      setTasks((p) => p.map((t) => (t.taskId === task.taskId ? prev : t)));
     }
   };
 
@@ -223,6 +234,7 @@ export default function TaskManager() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onBumpEta={handleBumpEta}
+              onInlineUpdate={isEditMode ? handleInlineUpdate : undefined}
               showActions={isEditMode}
             />
 
@@ -258,6 +270,7 @@ export default function TaskManager() {
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         onBumpEta={handleBumpEta}
+                        onInlineUpdate={isEditMode ? handleInlineUpdate : undefined}
                         showActions={isEditMode}
                       />
                     </div>

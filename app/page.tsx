@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Task, fetchTasks, deleteTask, updateTask, fetchProjects, deleteProject, getEmployees, isOverdue } from "@/utils/api";
-import TaskTable from "@/components/TaskTable";
+import { Task, fetchTasks, deleteTask, updateTask, fetchProjects, deleteProject, getEmployees, isOverdue, sortTasksByEtaAndPriority } from "@/utils/api";
+import TaskTable, { type TaskInlineUpdates } from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
 import ProjectForm from "@/components/ProjectForm";
 import { useEditMode } from "@/components/EditModeProvider";
@@ -68,7 +68,7 @@ export default function ProjectView() {
       );
     }
     if (statusFilter !== "All") filtered = filtered.filter((t) => t.status === statusFilter);
-    setFilteredTasks(filtered);
+    setFilteredTasks(sortTasksByEtaAndPriority(filtered));
   }, [allTasks, selectedProject, searchQuery, statusFilter]);
 
   const handleDelete = (taskId: string) => setDeleteConfirm(taskId);
@@ -90,6 +90,17 @@ export default function ProjectView() {
     } catch {
       // Revert on failure
       setAllTasks((prev) => prev.map((t) => t.taskId === task.taskId ? { ...t, eta: task.eta } : t));
+    }
+  };
+
+  const handleInlineUpdate = async (task: Task, updates: TaskInlineUpdates) => {
+    const prev = task;
+    setAllTasks((p) => p.map((t) => (t.taskId === task.taskId ? { ...t, ...updates } : t)));
+    try {
+      const updated = await updateTask(task.taskId, updates);
+      setAllTasks((p) => p.map((t) => (t.taskId === task.taskId ? updated : t)));
+    } catch {
+      setAllTasks((p) => p.map((t) => (t.taskId === task.taskId ? prev : t)));
     }
   };
   const openAddProject = () => { setFormMode("addProject"); setEditTask(null); setShowForm(true); };
@@ -264,6 +275,7 @@ export default function ProjectView() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onBumpEta={handleBumpEta}
+              onInlineUpdate={isEditMode ? handleInlineUpdate : undefined}
               showActions={isEditMode}
             />
 
@@ -299,6 +311,7 @@ export default function ProjectView() {
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         onBumpEta={handleBumpEta}
+                        onInlineUpdate={isEditMode ? handleInlineUpdate : undefined}
                         showActions={isEditMode}
                       />
                     </div>

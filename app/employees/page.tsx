@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Task, fetchTasks, isOverdue, getEmployees } from "@/utils/api";
-import TaskTable from "@/components/TaskTable";
+import { Task, fetchTasks, isOverdue, getEmployees, updateTask, sortTasksByEtaAndPriority } from "@/utils/api";
+import TaskTable, { type TaskInlineUpdates } from "@/components/TaskTable";
 import { useEditMode } from "@/components/EditModeProvider";
 
 const EMPLOYEE_COLUMNS = [
@@ -59,7 +59,7 @@ export default function EmployeeView() {
         (t) => t.description.toLowerCase().includes(q) || t.project.toLowerCase().includes(q) || t.taskId.toLowerCase().includes(q)
       );
     }
-    setEmployeeTasks(filtered);
+    setEmployeeTasks(sortTasksByEtaAndPriority(filtered));
   }, [selectedEmployee, allTasks, statusFilter, searchQuery]);
 
   const getStats = (employee: string) => {
@@ -75,6 +75,17 @@ export default function EmployeeView() {
   const selectedStats = selectedEmployee ? getStats(selectedEmployee) : null;
   const selectedIdx = selectedEmployee ? employees.indexOf(selectedEmployee) : 0;
   const avatarColor = AVATAR_COLORS[selectedIdx % AVATAR_COLORS.length];
+
+  const handleInlineUpdate = async (task: Task, updates: TaskInlineUpdates) => {
+    const prev = task;
+    setAllTasks((p) => p.map((t) => (t.taskId === task.taskId ? { ...t, ...updates } : t)));
+    try {
+      const updated = await updateTask(task.taskId, updates);
+      setAllTasks((p) => p.map((t) => (t.taskId === task.taskId ? updated : t)));
+    } catch {
+      setAllTasks((p) => p.map((t) => (t.taskId === task.taskId ? prev : t)));
+    }
+  };
 
   return (
     <div className="flex h-[calc(100vh-64px)]">
@@ -200,7 +211,12 @@ export default function EmployeeView() {
               </select>
             </div>
 
-            <TaskTable tasks={employeeTasks} columns={EMPLOYEE_COLUMNS} showActions={isEditMode} />
+            <TaskTable
+              tasks={employeeTasks}
+              columns={EMPLOYEE_COLUMNS}
+              onInlineUpdate={isEditMode ? handleInlineUpdate : undefined}
+              showActions={isEditMode}
+            />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">

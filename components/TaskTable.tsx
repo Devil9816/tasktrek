@@ -1,7 +1,115 @@
 "use client";
 
-import { useState } from "react";
-import { Task, isOverdue } from "@/utils/api";
+import { useState, useEffect, useRef } from "react";
+import { Task, TaskStatus, TaskPriority, isOverdue } from "@/utils/api";
+
+const STATUS_OPTIONS: TaskStatus[] = ["Not Started", "In Progress", "Complete", "On Hold"];
+const PRIORITY_OPTIONS: TaskPriority[] = ["High", "Medium", "Low"];
+
+export type TaskInlineUpdates = Partial<Pick<Task, "status" | "priority" | "description">>;
+
+function InlineDescriptionCell({
+  task,
+  disabled,
+  onSave,
+}: {
+  task: Task;
+  disabled: boolean;
+  onSave: (description: string) => Promise<void>;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [value, setValue] = useState(task.description);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) setValue(task.description);
+  }, [task.taskId, task.description, isEditing]);
+
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [isEditing]);
+
+  const closeEdit = () => setIsEditing(false);
+
+  const commitEdit = async () => {
+    const v = value.trim();
+    if (!v) {
+      setValue(task.description);
+      closeEdit();
+      return;
+    }
+    if (v !== task.description) {
+      await onSave(v);
+    }
+    closeEdit();
+  };
+
+  const handleBlur = () => {
+    void commitEdit();
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setValue(task.description);
+      closeEdit();
+    }
+  };
+
+  if (!isEditing) {
+    return (
+      <div className="flex items-start gap-1.5 min-w-[10rem] max-w-md">
+        <button
+          type="button"
+          onClick={() => !disabled && setIsEditing(true)}
+          disabled={disabled}
+          title="Edit description"
+          className="mt-0.5 flex-shrink-0 h-6 w-6 inline-flex items-center justify-center rounded-md text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-transparent hover:border-red-200 dark:hover:border-red-800 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+          aria-label="Edit description"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </button>
+        <span className="font-medium text-slate-800 dark:text-slate-100 leading-snug pt-0.5">{task.description}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-1.5 min-w-[10rem] max-w-md">
+      <span className="mt-0.5 flex-shrink-0 h-6 w-6 inline-flex items-center justify-center rounded-md text-red-500 opacity-80" aria-hidden>
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+      </span>
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={onKeyDown}
+        disabled={disabled}
+        rows={2}
+        className="flex-1 min-w-0 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 resize-y disabled:opacity-60"
+      />
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => void commitEdit()}
+        disabled={disabled}
+        title="Save description"
+        aria-label="Save description"
+        className="mt-0.5 flex-shrink-0 h-8 w-8 inline-flex items-center justify-center rounded-lg text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+        </svg>
+      </button>
+    </div>
+  );
+}
 
 interface Column {
   key: string;
@@ -14,6 +122,8 @@ interface TaskTableProps {
   onEdit?: (task: Task) => void;
   onDelete?: (taskId: string) => void;
   onBumpEta?: (task: Task, newEta: string) => Promise<void>;
+  /** When set (e.g. in edit mode), status/priority become dropdowns and description is editable inline. */
+  onInlineUpdate?: (task: Task, updates: TaskInlineUpdates) => Promise<void>;
   showActions?: boolean;
 }
 
@@ -37,8 +147,17 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function TaskTable({ tasks, columns, onEdit, onDelete, onBumpEta, showActions = true }: TaskTableProps) {
+export default function TaskTable({
+  tasks,
+  columns,
+  onEdit,
+  onDelete,
+  onBumpEta,
+  onInlineUpdate,
+  showActions = true,
+}: TaskTableProps) {
   const [bumpingId, setBumpingId] = useState<string | null>(null);
+  const [savingTaskId, setSavingTaskId] = useState<string | null>(null);
 
   const handleBump = async (task: Task) => {
     if (!onBumpEta || bumpingId) return;
@@ -68,11 +187,31 @@ export default function TaskTable({ tasks, columns, onEdit, onDelete, onBumpEta,
     );
   }
 
+  const runInlineUpdate = async (task: Task, updates: TaskInlineUpdates) => {
+    if (!onInlineUpdate) return;
+    setSavingTaskId(task.taskId);
+    try {
+      await onInlineUpdate(task, updates);
+    } finally {
+      setSavingTaskId(null);
+    }
+  };
+
   const renderCell = (task: Task, key: string) => {
+    const rowBusy = savingTaskId === task.taskId;
     switch (key) {
       case "id":
         return <span className="font-mono text-xs text-slate-500">{task.taskId}</span>;
       case "description":
+        if (onInlineUpdate) {
+          return (
+            <InlineDescriptionCell
+              task={task}
+              disabled={rowBusy}
+              onSave={(description) => runInlineUpdate(task, { description })}
+            />
+          );
+        }
         return <span className="font-medium text-slate-800 dark:text-slate-100">{task.description}</span>;
       case "project":
         return (
@@ -139,12 +278,56 @@ export default function TaskTable({ tasks, columns, onEdit, onDelete, onBumpEta,
         );
       }
       case "status":
+        if (onInlineUpdate) {
+          return (
+            <select
+              value={task.status}
+              onChange={(e) => {
+                const v = e.target.value as TaskStatus;
+                void runInlineUpdate(task, { status: v });
+              }}
+              disabled={rowBusy}
+              className={`inline-flex max-w-full rounded-full px-2 py-1 pr-6 text-[10px] font-black uppercase tracking-wider cursor-pointer disabled:opacity-60 disabled:cursor-wait appearance-none bg-[length:0.65rem] bg-[right_0.35rem_center] bg-no-repeat ${STATUS_STYLES[task.status] || ""}`}
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
+              }}
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          );
+        }
         return (
           <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${STATUS_STYLES[task.status] || ""}`}>
             {task.status}
           </span>
         );
       case "priority":
+        if (onInlineUpdate) {
+          return (
+            <select
+              value={task.priority}
+              onChange={(e) => {
+                const v = e.target.value as TaskPriority;
+                void runInlineUpdate(task, { priority: v });
+              }}
+              disabled={rowBusy}
+              className={`inline-flex max-w-full rounded-md px-2 py-0.5 pr-6 text-[10px] font-black uppercase tracking-tighter cursor-pointer disabled:opacity-60 disabled:cursor-wait appearance-none bg-[length:0.65rem] bg-[right_0.35rem_center] bg-no-repeat ${PRIORITY_STYLES[task.priority] || ""}`}
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
+              }}
+            >
+              {PRIORITY_OPTIONS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          );
+        }
         return (
           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-tighter ${PRIORITY_STYLES[task.priority] || ""}`}>
             {task.priority}
@@ -189,7 +372,10 @@ export default function TaskTable({ tasks, columns, onEdit, onDelete, onBumpEta,
                 className={`transition-all duration-200 ${getRowStyles(task)}`}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className="px-4 py-3 whitespace-nowrap">
+                  <td
+                    key={col.key}
+                    className={`px-4 py-3 ${col.key === "description" && onInlineUpdate ? "whitespace-normal align-top min-w-[12rem] max-w-md" : "whitespace-nowrap"}`}
+                  >
                     {renderCell(task, col.key)}
                   </td>
                 ))}
