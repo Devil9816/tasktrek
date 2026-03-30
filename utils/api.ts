@@ -114,6 +114,18 @@ export function getEmployees(tasks: Task[]): string[] {
   return Array.from(new Set(names)).sort();
 }
 
+const PRIORITY_RANK: Record<TaskPriority, number> = { High: 0, Medium: 1, Low: 2 };
+
+/** Earliest ETA first; tasks with no ETA sort last. Ties broken by highest priority first (High → Medium → Low). */
+export function sortTasksByEtaAndPriority(tasks: Task[]): Task[] {
+  const etaKey = (eta: string) => (eta?.trim() || "9999-12-31");
+  return [...tasks].sort((a, b) => {
+    const byEta = etaKey(a.eta).localeCompare(etaKey(b.eta));
+    if (byEta !== 0) return byEta;
+    return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+  });
+}
+
 export function isOverdue(task: Task): boolean {
   if (task.status === "Complete") return false;
   const today = new Date();
