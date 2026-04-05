@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Task, fetchTasks, deleteTask, updateTask, fetchProjects, deleteProject, getEmployees, isOverdue, sortTasksByEtaAndPriority } from "@/utils/api";
+import { useState, useEffect, useCallback, useRef } from "react";
+import confetti from "canvas-confetti";
+import { Task, fetchTasks, deleteTask, updateTask, fetchProjects, deleteProject, getEmployees, isOverdue, sortTasksByEtaAndPriority, getTaskDisplayName } from "@/utils/api";
 import TaskTable, { type TaskInlineUpdates } from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
 import ProjectForm from "@/components/ProjectForm";
@@ -9,7 +10,7 @@ import { useEditMode } from "@/components/EditModeProvider";
 
 const PROJECT_COLUMNS = [
   { key: "id", label: "Task ID" },
-  { key: "description", label: "Task Description" },
+  { key: "name", label: "Task Name" },
   { key: "assignedTo", label: "Assigned To" },
   { key: "eta", label: "ETA" },
   { key: "status", label: "Status" },
@@ -40,6 +41,8 @@ export default function ProjectView() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [loading, setLoading] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
+  const projectCompleteInitRef = useRef(true);
+  const projectCompletePrevRef = useRef(false);
 
   const loadData = useCallback(async (keepProject?: string) => {
     setLoading(true);
@@ -57,11 +60,36 @@ export default function ProjectView() {
   useEffect(() => { loadData(); }, [loadData]);
 
   useEffect(() => {
+    projectCompleteInitRef.current = true;
+    projectCompletePrevRef.current = false;
+  }, [selectedProject]);
+
+  useEffect(() => {
+    if (!selectedProject || loading) return;
+    const pt = allTasks.filter((t) => t.project === selectedProject);
+    const allComplete = pt.length > 0 && pt.every((t) => t.status === "Complete");
+
+    if (projectCompleteInitRef.current) {
+      projectCompleteInitRef.current = false;
+      projectCompletePrevRef.current = allComplete;
+      return;
+    }
+
+    if (allComplete && !projectCompletePrevRef.current) {
+      const burst = { spread: 70, origin: { y: 0.65 as number }, zIndex: 9999 };
+      void confetti({ ...burst, particleCount: 100, startVelocity: 45 });
+      void confetti({ ...burst, particleCount: 55, spread: 100, scalar: 0.9 });
+    }
+    projectCompletePrevRef.current = allComplete;
+  }, [allTasks, selectedProject, loading]);
+
+  useEffect(() => {
     let filtered = selectedProject ? allTasks.filter((t) => t.project === selectedProject) : allTasks;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (t) =>
+          getTaskDisplayName(t).toLowerCase().includes(q) ||
           t.description.toLowerCase().includes(q) ||
           (Array.isArray(t.assignedTo) ? t.assignedTo.some((a) => a.toLowerCase().includes(q)) : false) ||
           t.taskId.toLowerCase().includes(q)
@@ -265,6 +293,7 @@ export default function ProjectView() {
                 <option value="In Progress">In Progress</option>
                 <option value="Complete">Complete</option>
                 <option value="On Hold">On Hold</option>
+                <option value="Blocker">Blocker</option>
               </select>
             </div>
 

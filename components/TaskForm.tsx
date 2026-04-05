@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Task, TaskStatus, TaskPriority, createTask, updateTask } from "@/utils/api";
+import { Task, TaskStatus, TaskPriority, createTask, updateTask, getTaskDisplayName } from "@/utils/api";
 
 interface TaskFormProps {
   editTask?: Task | null;
@@ -15,7 +15,7 @@ interface TaskFormProps {
   onCancel: () => void;
 }
 
-const STATUS_OPTIONS: TaskStatus[] = ["Not Started", "In Progress", "Complete", "On Hold"];
+const STATUS_OPTIONS: TaskStatus[] = ["Not Started", "In Progress", "Complete", "On Hold", "Blocker"];
 const PRIORITY_OPTIONS: TaskPriority[] = ["High", "Medium", "Low"];
 
 export default function TaskForm({
@@ -28,6 +28,7 @@ export default function TaskForm({
   onCancel,
 }: TaskFormProps) {
   const [project, setProject] = useState(defaultProject ?? "");
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [assignedTo, setAssignedTo] = useState<string[]>([]);
   const [addAssigneeInput, setAddAssigneeInput] = useState("");
@@ -40,6 +41,7 @@ export default function TaskForm({
   useEffect(() => {
     if (editTask) {
       setProject(editTask.project);
+      setName(getTaskDisplayName(editTask));
       setDescription(editTask.description);
       setAssignedTo(Array.isArray(editTask.assignedTo) ? [...editTask.assignedTo] : editTask.assignedTo ? [editTask.assignedTo] : []);
       setEta(editTask.eta);
@@ -72,6 +74,7 @@ export default function TaskForm({
   const validate = () => {
     const e: Record<string, string> = {};
     if (!project.trim()) e.project = "Project name is required";
+    if (!name.trim()) e.name = "Task name is required";
     if (!description.trim()) e.description = "Task description is required";
     if (assignedTo.length === 0) e.assignedTo = "Select at least one assignee";
     if (!eta) e.eta = "ETA is required";
@@ -85,9 +88,9 @@ export default function TaskForm({
     setSaving(true);
     try {
       if (editTask) {
-        await updateTask(editTask.taskId, { project, description, assignedTo, eta, status, priority });
+        await updateTask(editTask.taskId, { project, name: name.trim(), description, assignedTo, eta, status, priority });
       } else {
-        await createTask({ project, description, assignedTo, eta, status, priority });
+        await createTask({ project, name: name.trim(), description, assignedTo, eta, status, priority });
       }
       onSave();
     } catch (err) {
@@ -130,6 +133,21 @@ export default function TaskForm({
           </>
         )}
         {errors.project && <p className="text-red-500 text-xs mt-1">{errors.project}</p>}
+      </div>
+
+      {/* Task name */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+          Task Name <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: "" })); }}
+          placeholder="Short title shown in the task list"
+          className={inputClass("name")}
+        />
+        {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
       </div>
 
       {/* Description */}

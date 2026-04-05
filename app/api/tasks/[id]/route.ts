@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Task from "@/models/Task";
-import { normalizeAssignedTo, parseAssignedTo } from "@/lib/taskUtils";
+import { normalizeTask, parseAssignedTo } from "@/lib/taskUtils";
 
 // GET /api/tasks/[id] — fetch a single task by taskId
 export async function GET(
@@ -14,7 +14,7 @@ export async function GET(
     if (!task) {
       return NextResponse.json({ success: false, error: "Task not found" }, { status: 404 });
     }
-    const normalized = normalizeAssignedTo(task);
+    const normalized = normalizeTask(task);
     return NextResponse.json({ success: true, data: normalized });
   } catch (error) {
     console.error("GET /api/tasks/[id] error:", error);
@@ -30,9 +30,21 @@ export async function PUT(
   try {
     await connectDB();
     const body = await req.json();
-    const { project, description, assignedTo, eta, status, priority } = body;
+    const { project, name, description, assignedTo, eta, status, priority } = body;
 
-    const update: Record<string, unknown> = { project, description, eta, status, priority };
+    const update: Record<string, unknown> = {};
+    if (project !== undefined) update.project = project;
+    if (name !== undefined) {
+      const n = typeof name === "string" ? name.trim() : "";
+      if (!n) {
+        return NextResponse.json({ success: false, error: "Task name cannot be empty" }, { status: 400 });
+      }
+      update.name = n;
+    }
+    if (description !== undefined) update.description = description;
+    if (eta !== undefined) update.eta = eta;
+    if (status !== undefined) update.status = status;
+    if (priority !== undefined) update.priority = priority;
     if (assignedTo !== undefined) {
       const assignees = parseAssignedTo(assignedTo);
       if (assignees.length === 0) {
@@ -54,7 +66,7 @@ export async function PUT(
       return NextResponse.json({ success: false, error: "Task not found" }, { status: 404 });
     }
 
-    const normalized = normalizeAssignedTo(task);
+    const normalized = normalizeTask(task);
     return NextResponse.json({ success: true, data: normalized });
   } catch (error) {
     console.error("PUT /api/tasks/[id] error:", error);

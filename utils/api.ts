@@ -1,10 +1,12 @@
-export type TaskStatus = "Not Started" | "In Progress" | "Complete" | "On Hold";
+export type TaskStatus = "Not Started" | "In Progress" | "Complete" | "On Hold" | "Blocker";
 export type TaskPriority = "High" | "Medium" | "Low";
 
 export interface Task {
   _id: string;
   taskId: string;
   project: string;
+  /** Short title for lists; legacy tasks may omit and UI uses description. */
+  name: string;
   description: string;
   assignedTo: string[];
   eta: string;
@@ -12,6 +14,13 @@ export interface Task {
   priority: TaskPriority;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Display title for tables (API normalizes legacy docs to `name`). */
+export function getTaskDisplayName(task: Pick<Task, "name" | "description">): string {
+  const n = task.name?.trim();
+  if (n) return n;
+  return task.description || "";
 }
 
 export type CreateTaskInput = Omit<Task, "_id" | "taskId" | "createdAt" | "updatedAt">;

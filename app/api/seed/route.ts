@@ -41,15 +41,15 @@ export async function POST() {
     };
 
     const demo = [
-      { taskId: DEMO_TASK_IDS[0], project: "Loan Model", description: "Build credit scoring pipeline", assignedTo: ["Alice Johnson"], eta: addDays(5), status: "In Progress", priority: "High" },
-      { taskId: DEMO_TASK_IDS[1], project: "Loan Model", description: "Data validation & cleaning", assignedTo: ["Bob Smith"], eta: addDays(-2), status: "Not Started", priority: "High" },
-      { taskId: DEMO_TASK_IDS[2], project: "Loan Model", description: "Write unit tests for model", assignedTo: ["Alice Johnson", "Bob Smith"], eta: addDays(10), status: "Not Started", priority: "Medium" },
-      { taskId: DEMO_TASK_IDS[3], project: "CRM Tool", description: "Design customer dashboard UI", assignedTo: ["Carol White"], eta: addDays(3), status: "In Progress", priority: "High" },
-      { taskId: DEMO_TASK_IDS[4], project: "CRM Tool", description: "Integrate email notification system", assignedTo: ["Bob Smith"], eta: addDays(-1), status: "On Hold", priority: "Medium" },
-      { taskId: DEMO_TASK_IDS[5], project: "CRM Tool", description: "Set up CI/CD pipeline", assignedTo: ["David Lee"], eta: addDays(7), status: "Complete", priority: "Low" },
-      { taskId: DEMO_TASK_IDS[6], project: "Collections Model", description: "Define collection strategy rules", assignedTo: ["Carol White"], eta: addDays(-3), status: "Not Started", priority: "High" },
-      { taskId: DEMO_TASK_IDS[7], project: "Collections Model", description: "Build reporting dashboard", assignedTo: ["David Lee", "Carol White"], eta: addDays(14), status: "In Progress", priority: "Medium" },
-      { taskId: DEMO_TASK_IDS[8], project: "Collections Model", description: "QA testing & bug fixes", assignedTo: ["Alice Johnson"], eta: addDays(20), status: "Not Started", priority: "Low" },
+      { taskId: DEMO_TASK_IDS[0], project: "Loan Model", name: "Credit scoring pipeline", description: "Build credit scoring pipeline", assignedTo: ["Alice Johnson"], eta: addDays(5), status: "In Progress", priority: "High" },
+      { taskId: DEMO_TASK_IDS[1], project: "Loan Model", name: "Data validation", description: "Data validation & cleaning", assignedTo: ["Bob Smith"], eta: addDays(-2), status: "Not Started", priority: "High" },
+      { taskId: DEMO_TASK_IDS[2], project: "Loan Model", name: "Unit tests", description: "Write unit tests for model", assignedTo: ["Alice Johnson", "Bob Smith"], eta: addDays(10), status: "Not Started", priority: "Medium" },
+      { taskId: DEMO_TASK_IDS[3], project: "CRM Tool", name: "Dashboard UI", description: "Design customer dashboard UI", assignedTo: ["Carol White"], eta: addDays(3), status: "In Progress", priority: "High" },
+      { taskId: DEMO_TASK_IDS[4], project: "CRM Tool", name: "Email notifications", description: "Integrate email notification system", assignedTo: ["Bob Smith"], eta: addDays(-1), status: "On Hold", priority: "Medium" },
+      { taskId: DEMO_TASK_IDS[5], project: "CRM Tool", name: "CI/CD pipeline", description: "Set up CI/CD pipeline", assignedTo: ["David Lee"], eta: addDays(7), status: "Complete", priority: "Low" },
+      { taskId: DEMO_TASK_IDS[6], project: "Collections Model", name: "Strategy rules", description: "Define collection strategy rules", assignedTo: ["Carol White"], eta: addDays(-3), status: "Not Started", priority: "High" },
+      { taskId: DEMO_TASK_IDS[7], project: "Collections Model", name: "Reporting dashboard", description: "Build reporting dashboard", assignedTo: ["David Lee", "Carol White"], eta: addDays(14), status: "In Progress", priority: "Medium" },
+      { taskId: DEMO_TASK_IDS[8], project: "Collections Model", name: "QA & bugs", description: "QA testing & bug fixes", assignedTo: ["Alice Johnson"], eta: addDays(20), status: "Not Started", priority: "Low" },
     ];
 
     // Use upsert so re-running seed never throws duplicate key errors

@@ -1,9 +1,10 @@
-export type TaskStatus = "Not Started" | "In Progress" | "Complete" | "On Hold";
+export type TaskStatus = "Not Started" | "In Progress" | "Complete" | "On Hold" | "Blocker";
 export type TaskPriority = "High" | "Medium" | "Low";
 
 export interface Task {
   id: string;
   project: string;
+  name: string;
   description: string;
   assignedTo: string[];
   eta: string; // ISO date string YYYY-MM-DD
@@ -90,15 +91,15 @@ export function seedDemoData(): void {
   };
 
   const demo: Task[] = [
-    { id: "TASK-1001", project: "Loan Model", description: "Build credit scoring pipeline", assignedTo: ["Alice Johnson"], eta: addDays(5), status: "In Progress", priority: "High", createdAt: new Date().toISOString() },
-    { id: "TASK-1002", project: "Loan Model", description: "Data validation & cleaning", assignedTo: ["Bob Smith"], eta: addDays(-2), status: "Not Started", priority: "High", createdAt: new Date().toISOString() },
-    { id: "TASK-1003", project: "Loan Model", description: "Write unit tests for model", assignedTo: ["Alice Johnson"], eta: addDays(10), status: "Not Started", priority: "Medium", createdAt: new Date().toISOString() },
-    { id: "TASK-1004", project: "CRM Tool", description: "Design customer dashboard UI", assignedTo: ["Carol White"], eta: addDays(3), status: "In Progress", priority: "High", createdAt: new Date().toISOString() },
-    { id: "TASK-1005", project: "CRM Tool", description: "Integrate email notification system", assignedTo: ["Bob Smith"], eta: addDays(-1), status: "On Hold", priority: "Medium", createdAt: new Date().toISOString() },
-    { id: "TASK-1006", project: "CRM Tool", description: "Set up CI/CD pipeline", assignedTo: ["David Lee"], eta: addDays(7), status: "Complete", priority: "Low", createdAt: new Date().toISOString() },
-    { id: "TASK-1007", project: "Collections Model", description: "Define collection strategy rules", assignedTo: ["Carol White"], eta: addDays(-3), status: "Not Started", priority: "High", createdAt: new Date().toISOString() },
-    { id: "TASK-1008", project: "Collections Model", description: "Build reporting dashboard", assignedTo: ["David Lee"], eta: addDays(14), status: "In Progress", priority: "Medium", createdAt: new Date().toISOString() },
-    { id: "TASK-1009", project: "Collections Model", description: "QA testing & bug fixes", assignedTo: ["Alice Johnson"], eta: addDays(20), status: "Not Started", priority: "Low", createdAt: new Date().toISOString() },
+    { id: "TASK-1001", project: "Loan Model", name: "Credit scoring pipeline", description: "Build credit scoring pipeline", assignedTo: ["Alice Johnson"], eta: addDays(5), status: "In Progress", priority: "High", createdAt: new Date().toISOString() },
+    { id: "TASK-1002", project: "Loan Model", name: "Data validation", description: "Data validation & cleaning", assignedTo: ["Bob Smith"], eta: addDays(-2), status: "Not Started", priority: "High", createdAt: new Date().toISOString() },
+    { id: "TASK-1003", project: "Loan Model", name: "Unit tests", description: "Write unit tests for model", assignedTo: ["Alice Johnson"], eta: addDays(10), status: "Not Started", priority: "Medium", createdAt: new Date().toISOString() },
+    { id: "TASK-1004", project: "CRM Tool", name: "Dashboard UI", description: "Design customer dashboard UI", assignedTo: ["Carol White"], eta: addDays(3), status: "In Progress", priority: "High", createdAt: new Date().toISOString() },
+    { id: "TASK-1005", project: "CRM Tool", name: "Email notifications", description: "Integrate email notification system", assignedTo: ["Bob Smith"], eta: addDays(-1), status: "On Hold", priority: "Medium", createdAt: new Date().toISOString() },
+    { id: "TASK-1006", project: "CRM Tool", name: "CI/CD pipeline", description: "Set up CI/CD pipeline", assignedTo: ["David Lee"], eta: addDays(7), status: "Complete", priority: "Low", createdAt: new Date().toISOString() },
+    { id: "TASK-1007", project: "Collections Model", name: "Strategy rules", description: "Define collection strategy rules", assignedTo: ["Carol White"], eta: addDays(-3), status: "Not Started", priority: "High", createdAt: new Date().toISOString() },
+    { id: "TASK-1008", project: "Collections Model", name: "Reporting dashboard", description: "Build reporting dashboard", assignedTo: ["David Lee"], eta: addDays(14), status: "In Progress", priority: "Medium", createdAt: new Date().toISOString() },
+    { id: "TASK-1009", project: "Collections Model", name: "QA & bugs", description: "QA testing & bug fixes", assignedTo: ["Alice Johnson"], eta: addDays(20), status: "Not Started", priority: "Low", createdAt: new Date().toISOString() },
   ];
 
   saveTasks(demo);

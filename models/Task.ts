@@ -3,10 +3,12 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface ITask extends Document {
   taskId: string;
   project: string;
+  /** Short label shown in tables; optional on legacy documents (UI falls back to description). */
+  name?: string;
   description: string;
   assignedTo: string[];
   eta: string;
-  status: "Not Started" | "In Progress" | "Complete" | "On Hold";
+  status: "Not Started" | "In Progress" | "Complete" | "On Hold" | "Blocker";
   priority: "High" | "Medium" | "Low";
   createdAt: Date;
   updatedAt: Date;
@@ -22,6 +24,10 @@ const TaskSchema = new Schema<ITask>(
     project: {
       type: String,
       required: true,
+      trim: true,
+    },
+    name: {
+      type: String,
       trim: true,
     },
     description: {
@@ -48,7 +54,7 @@ const TaskSchema = new Schema<ITask>(
     },
     status: {
       type: String,
-      enum: ["Not Started", "In Progress", "Complete", "On Hold"],
+      enum: ["Not Started", "In Progress", "Complete", "On Hold", "Blocker"],
       default: "Not Started",
     },
     priority: {
