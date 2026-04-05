@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Task, fetchTasks, isOverdue, getEmployees, updateTask, sortTasksByEtaAndPriority } from "@/utils/api";
+import { Task, fetchTasks, isOverdue, getEmployees, updateTask, sortTasksByEtaAndPriority, getTaskDisplayName } from "@/utils/api";
 import TaskTable, { type TaskInlineUpdates } from "@/components/TaskTable";
 import { useEditMode } from "@/components/EditModeProvider";
 
 const EMPLOYEE_COLUMNS = [
   { key: "id", label: "Task ID" },
   { key: "project", label: "Project" },
-  { key: "description", label: "Task" },
+  { key: "name", label: "Task Name" },
   { key: "eta", label: "ETA" },
   { key: "status", label: "Status" },
   { key: "priority", label: "Priority" },
@@ -56,7 +56,11 @@ export default function EmployeeView() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (t) => t.description.toLowerCase().includes(q) || t.project.toLowerCase().includes(q) || t.taskId.toLowerCase().includes(q)
+        (t) =>
+          getTaskDisplayName(t).toLowerCase().includes(q) ||
+          t.description.toLowerCase().includes(q) ||
+          t.project.toLowerCase().includes(q) ||
+          t.taskId.toLowerCase().includes(q)
       );
     }
     setEmployeeTasks(sortTasksByEtaAndPriority(filtered));
@@ -208,6 +212,7 @@ export default function EmployeeView() {
                 <option value="In Progress">In Progress</option>
                 <option value="Complete">Complete</option>
                 <option value="On Hold">On Hold</option>
+                <option value="Blocker">Blocker</option>
               </select>
             </div>
 

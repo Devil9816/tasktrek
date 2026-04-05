@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Task, fetchTasks, deleteTask, updateTask, isOverdue, getProjects, getEmployees, sortTasksByEtaAndPriority } from "@/utils/api";
+import { Task, fetchTasks, deleteTask, updateTask, isOverdue, getProjects, getEmployees, sortTasksByEtaAndPriority, getTaskDisplayName } from "@/utils/api";
 import TaskTable, { type TaskInlineUpdates } from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
 import { STATUS_STYLES, PRIORITY_STYLES } from "@/components/TaskTable";
@@ -10,7 +10,7 @@ import { useEditMode } from "@/components/EditModeProvider";
 const ALL_COLUMNS = [
   { key: "id", label: "Task ID" },
   { key: "project", label: "Project" },
-  { key: "description", label: "Task Description" },
+  { key: "name", label: "Task Name" },
   { key: "assignedTo", label: "Assigned To" },
   { key: "eta", label: "ETA" },
   { key: "status", label: "Status" },
@@ -49,6 +49,7 @@ export default function TaskManager() {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (t) =>
+          getTaskDisplayName(t).toLowerCase().includes(q) ||
           t.description.toLowerCase().includes(q) ||
           (Array.isArray(t.assignedTo) ? t.assignedTo.some((a) => a.toLowerCase().includes(q)) : false) ||
           t.project.toLowerCase().includes(q) ||
@@ -148,7 +149,7 @@ export default function TaskManager() {
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
               <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3">Status Breakdown</h3>
               <div className="flex flex-wrap gap-3">
-                {(["Not Started", "In Progress", "Complete", "On Hold"] as const).map((s) => {
+                {(["Not Started", "In Progress", "Complete", "On Hold", "Blocker"] as const).map((s) => {
                   const count = tasks.filter((t) => t.status === s).length;
                   return (
                     <div key={s} className="flex items-center gap-2">
@@ -203,6 +204,7 @@ export default function TaskManager() {
                 <option value="In Progress">In Progress</option>
                 <option value="Complete">Complete</option>
                 <option value="On Hold">On Hold</option>
+                <option value="Blocker">Blocker</option>
               </select>
               <select
                 value={priorityFilter}

@@ -1,33 +1,34 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Task, TaskStatus, TaskPriority, isOverdue } from "@/utils/api";
+import { Task, TaskStatus, TaskPriority, isOverdue, getTaskDisplayName } from "@/utils/api";
 
-const STATUS_OPTIONS: TaskStatus[] = ["Not Started", "In Progress", "Complete", "On Hold"];
+const STATUS_OPTIONS: TaskStatus[] = ["Not Started", "In Progress", "Complete", "On Hold", "Blocker"];
 const PRIORITY_OPTIONS: TaskPriority[] = ["High", "Medium", "Low"];
 
-export type TaskInlineUpdates = Partial<Pick<Task, "status" | "priority" | "description">>;
+export type TaskInlineUpdates = Partial<Pick<Task, "status" | "priority" | "name">>;
 
-function InlineDescriptionCell({
+function InlineNameCell({
   task,
   disabled,
   onSave,
 }: {
   task: Task;
   disabled: boolean;
-  onSave: (description: string) => Promise<void>;
+  onSave: (name: string) => Promise<void>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [value, setValue] = useState(task.description);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [value, setValue] = useState(() => getTaskDisplayName(task));
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!isEditing) setValue(task.description);
-  }, [task.taskId, task.description, isEditing]);
+    if (!isEditing) setValue(getTaskDisplayName(task));
+  }, [task.taskId, task.name, task.description, isEditing]);
 
   useEffect(() => {
-    if (isEditing && textareaRef.current) {
-      textareaRef.current.focus();
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
     }
   }, [isEditing]);
 
@@ -36,11 +37,11 @@ function InlineDescriptionCell({
   const commitEdit = async () => {
     const v = value.trim();
     if (!v) {
-      setValue(task.description);
+      setValue(getTaskDisplayName(task));
       closeEdit();
       return;
     }
-    if (v !== task.description) {
+    if (v !== getTaskDisplayName(task)) {
       await onSave(v);
     }
     closeEdit();
@@ -52,56 +53,62 @@ function InlineDescriptionCell({
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
-      setValue(task.description);
+      setValue(getTaskDisplayName(task));
       closeEdit();
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      void commitEdit();
     }
   };
 
+  const display = getTaskDisplayName(task);
+
   if (!isEditing) {
     return (
-      <div className="flex items-start gap-1.5 min-w-[10rem] max-w-md">
+      <div className="flex items-center gap-1.5 min-w-[10rem] max-w-md">
         <button
           type="button"
           onClick={() => !disabled && setIsEditing(true)}
           disabled={disabled}
-          title="Edit description"
-          className="mt-0.5 flex-shrink-0 h-6 w-6 inline-flex items-center justify-center rounded-md text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-transparent hover:border-red-200 dark:hover:border-red-800 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-          aria-label="Edit description"
+          title="Edit task name"
+          className="flex-shrink-0 h-6 w-6 inline-flex items-center justify-center rounded-md text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-transparent hover:border-red-200 dark:hover:border-red-800 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+          aria-label="Edit task name"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
         </button>
-        <span className="font-medium text-slate-800 dark:text-slate-100 leading-snug pt-0.5">{task.description}</span>
+        <span className="font-medium text-slate-800 dark:text-slate-100 leading-snug">{display}</span>
       </div>
     );
   }
 
   return (
-    <div className="flex items-start gap-1.5 min-w-[10rem] max-w-md">
-      <span className="mt-0.5 flex-shrink-0 h-6 w-6 inline-flex items-center justify-center rounded-md text-red-500 opacity-80" aria-hidden>
+    <div className="flex items-center gap-1.5 min-w-[10rem] max-w-md">
+      <span className="flex-shrink-0 h-6 w-6 inline-flex items-center justify-center rounded-md text-red-500 opacity-80" aria-hidden>
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
         </svg>
       </span>
-      <textarea
-        ref={textareaRef}
+      <input
+        ref={inputRef}
+        type="text"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={onKeyDown}
         disabled={disabled}
-        rows={2}
-        className="flex-1 min-w-0 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 resize-y disabled:opacity-60"
+        className="flex-1 min-w-0 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:opacity-60"
       />
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => void commitEdit()}
         disabled={disabled}
-        title="Save description"
-        aria-label="Save description"
-        className="mt-0.5 flex-shrink-0 h-8 w-8 inline-flex items-center justify-center rounded-lg text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+        title="Save name"
+        aria-label="Save task name"
+        className="flex-shrink-0 h-8 w-8 inline-flex items-center justify-center rounded-lg text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-40 disabled:pointer-events-none"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
@@ -122,7 +129,7 @@ interface TaskTableProps {
   onEdit?: (task: Task) => void;
   onDelete?: (taskId: string) => void;
   onBumpEta?: (task: Task, newEta: string) => Promise<void>;
-  /** When set (e.g. in edit mode), status/priority become dropdowns and description is editable inline. */
+  /** When set (e.g. in edit mode), status/priority become dropdowns and task name is editable inline. */
   onInlineUpdate?: (task: Task, updates: TaskInlineUpdates) => Promise<void>;
   showActions?: boolean;
 }
@@ -133,6 +140,7 @@ export const STATUS_STYLES: Record<string, string> = {
   "Complete": "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 shadow-sm",
   "In Review": "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-800 shadow-sm",
   "On Hold": "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800 shadow-sm",
+  "Blocker": "bg-violet-100 dark:bg-violet-950/40 text-violet-800 dark:text-violet-300 border border-violet-300 dark:border-violet-800 shadow-sm",
 };
 
 export const PRIORITY_STYLES: Record<string, string> = {
@@ -202,17 +210,17 @@ export default function TaskTable({
     switch (key) {
       case "id":
         return <span className="font-mono text-xs text-slate-500">{task.taskId}</span>;
-      case "description":
+      case "name":
         if (onInlineUpdate) {
           return (
-            <InlineDescriptionCell
+            <InlineNameCell
               task={task}
               disabled={rowBusy}
-              onSave={(description) => runInlineUpdate(task, { description })}
+              onSave={(name) => runInlineUpdate(task, { name })}
             />
           );
         }
-        return <span className="font-medium text-slate-800 dark:text-slate-100">{task.description}</span>;
+        return <span className="font-medium text-slate-800 dark:text-slate-100">{getTaskDisplayName(task)}</span>;
       case "project":
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-slate-700 shadow-sm uppercase tracking-tight transition-colors">
@@ -344,6 +352,7 @@ export default function TaskTable({
     if (task.status === "Complete") return "bg-emerald-50/50 dark:bg-emerald-950/10 border-l-4 border-l-emerald-500 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20 grayscale-[0.2]";
     if (task.status === "In Progress") return "bg-red-50/30 dark:bg-red-900/10 border-l-4 border-l-red-400 hover:bg-red-50 dark:hover:bg-red-900/20";
     if (task.status === "On Hold") return "bg-amber-50/50 dark:bg-amber-950/10 border-l-4 border-l-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20";
+    if (task.status === "Blocker") return "bg-violet-50/60 dark:bg-violet-950/15 border-l-4 border-l-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/25";
     return "bg-white dark:bg-slate-900 border-l-4 border-l-slate-200 dark:border-l-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors";
   };
 
@@ -374,7 +383,7 @@ export default function TaskTable({
                 {columns.map((col) => (
                   <td
                     key={col.key}
-                    className={`px-4 py-3 ${col.key === "description" && onInlineUpdate ? "whitespace-normal align-top min-w-[12rem] max-w-md" : "whitespace-nowrap"}`}
+                    className={`px-4 py-3 ${col.key === "name" && onInlineUpdate ? "whitespace-normal align-top min-w-[12rem] max-w-md" : "whitespace-nowrap"}`}
                   >
                     {renderCell(task, col.key)}
                   </td>

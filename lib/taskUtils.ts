@@ -14,6 +14,24 @@ export function normalizeAssignedTo(task: Record<string, any>): Record<string, a
   return { ...task, assignedTo };
 }
 
+/** Short title for lists; falls back to description for legacy tasks without `name`. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function normalizeTaskName(task: Record<string, any>): Record<string, any> {
+  if (!task) return task;
+  const name =
+    typeof task.name === "string" && task.name.trim()
+      ? task.name.trim()
+      : typeof task.description === "string"
+        ? task.description
+        : "";
+  return { ...task, name };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function normalizeTask(task: Record<string, any>): Record<string, any> {
+  return normalizeTaskName(normalizeAssignedTo(task));
+}
+
 /** Accept assignedTo from request body (string or string[]) and return string[] */
 export function parseAssignedTo(assignedTo: unknown): string[] {
   if (Array.isArray(assignedTo)) {
