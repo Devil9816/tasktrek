@@ -15,7 +15,7 @@ interface TaskFormProps {
   onCancel: () => void;
 }
 
-const STATUS_OPTIONS: TaskStatus[] = ["Not Started", "In Progress", "Complete", "On Hold", "Blocker"];
+const STATUS_OPTIONS: TaskStatus[] = ["Not Started", "In Progress", "Complete", "Future To-do's", "On Hold", "Blocker"];
 const PRIORITY_OPTIONS: TaskPriority[] = ["High", "Medium", "Low"];
 
 export default function TaskForm({

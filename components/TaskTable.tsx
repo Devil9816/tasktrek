@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Task, TaskStatus, TaskPriority, isOverdue, getTaskDisplayName } from "@/utils/api";
 
-const STATUS_OPTIONS: TaskStatus[] = ["Not Started", "In Progress", "Complete", "On Hold", "Blocker"];
+const STATUS_OPTIONS: TaskStatus[] = ["Not Started", "In Progress", "Complete", "Future To-do's", "On Hold", "Blocker"];
 const PRIORITY_OPTIONS: TaskPriority[] = ["High", "Medium", "Low"];
 
 export type TaskInlineUpdates = Partial<Pick<Task, "status" | "priority" | "name">>;
@@ -131,6 +131,7 @@ interface TaskTableProps {
   onBumpEta?: (task: Task, newEta: string) => Promise<void>;
   /** When set (e.g. in edit mode), status/priority become dropdowns and task name is editable inline. */
   onInlineUpdate?: (task: Task, updates: TaskInlineUpdates) => Promise<void>;
+  onTaskClick?: (task: Task) => void;
   showActions?: boolean;
 }
 
@@ -138,6 +139,7 @@ export const STATUS_STYLES: Record<string, string> = {
   "Not Started": "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 shadow-sm",
   "In Progress": "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-800 shadow-sm animate-pulse-subtle",
   "Complete": "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 shadow-sm",
+  "Future To-do's": "bg-cyan-100 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800 shadow-sm",
   "In Review": "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-800 shadow-sm",
   "On Hold": "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800 shadow-sm",
   "Blocker": "bg-violet-100 dark:bg-violet-950/40 text-violet-800 dark:text-violet-300 border border-violet-300 dark:border-violet-800 shadow-sm",
@@ -162,6 +164,7 @@ export default function TaskTable({
   onDelete,
   onBumpEta,
   onInlineUpdate,
+  onTaskClick,
   showActions = true,
 }: TaskTableProps) {
   const [bumpingId, setBumpingId] = useState<string | null>(null);
@@ -350,6 +353,7 @@ export default function TaskTable({
     const overdue = isOverdue(task);
     if (overdue) return "bg-red-50/80 dark:bg-red-950/20 border-l-4 border-l-red-600 hover:bg-red-100 dark:hover:bg-red-900/30";
     if (task.status === "Complete") return "bg-emerald-50/50 dark:bg-emerald-950/10 border-l-4 border-l-emerald-500 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/20 grayscale-[0.2]";
+    if (task.status === "Future To-do's") return "bg-cyan-50/60 dark:bg-cyan-950/15 border-l-4 border-l-cyan-500 hover:bg-cyan-100/60 dark:hover:bg-cyan-950/25";
     if (task.status === "In Progress") return "bg-red-50/30 dark:bg-red-900/10 border-l-4 border-l-red-400 hover:bg-red-50 dark:hover:bg-red-900/20";
     if (task.status === "On Hold") return "bg-amber-50/50 dark:bg-amber-950/10 border-l-4 border-l-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20";
     if (task.status === "Blocker") return "bg-violet-50/60 dark:bg-violet-950/15 border-l-4 border-l-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/25";
@@ -378,7 +382,8 @@ export default function TaskTable({
             return (
               <tr
                 key={task._id}
-                className={`transition-all duration-200 ${getRowStyles(task)}`}
+                onClick={() => !onInlineUpdate && onTaskClick?.(task)}
+                className={`transition-all duration-200 ${!onInlineUpdate && onTaskClick ? "cursor-pointer" : ""} ${getRowStyles(task)}`}
               >
                 {columns.map((col) => (
                   <td
@@ -391,8 +396,21 @@ export default function TaskTable({
                 {showActions && (
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-2">
+                      {onTaskClick && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
+                          title="View task details"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          View
+                        </button>
+                      )}
                       <button
-                        onClick={() => onEdit?.(task)}
+                        onClick={(e) => { e.stopPropagation(); onEdit?.(task); }}
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg border border-red-200 dark:border-red-800 transition-colors"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -401,7 +419,7 @@ export default function TaskTable({
                         Edit
                       </button>
                       <button
-                        onClick={() => onDelete?.(task.taskId)}
+                        onClick={(e) => { e.stopPropagation(); onDelete?.(task.taskId); }}
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg border border-red-200 dark:border-red-800 transition-colors"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

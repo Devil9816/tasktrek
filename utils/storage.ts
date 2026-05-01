@@ -1,4 +1,4 @@
-export type TaskStatus = "Not Started" | "In Progress" | "Complete" | "On Hold" | "Blocker";
+export type TaskStatus = "Not Started" | "In Progress" | "Complete" | "Future To-do's" | "On Hold" | "Blocker";
 export type TaskPriority = "High" | "Medium" | "Low";
 
 export interface Task {
@@ -68,7 +68,7 @@ export function getEmployees(): string[] {
 }
 
 export function isOverdue(task: Task): boolean {
-  if (task.status === "Complete") return false;
+  if (task.status === "Complete" || task.status === "Future To-do's") return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const eta = new Date(task.eta);

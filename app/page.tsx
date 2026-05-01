@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import confetti from "canvas-confetti";
-import { Task, fetchTasks, deleteTask, updateTask, fetchProjects, deleteProject, getEmployees, isOverdue, sortTasksByEtaAndPriority, getTaskDisplayName } from "@/utils/api";
+import { Task, fetchTasks, deleteTask, updateTask, fetchProjects, deleteProject, getEmployees, isOverdue, getTaskDisplayName } from "@/utils/api";
 import TaskTable, { type TaskInlineUpdates } from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
+import TaskDetailsPanel from "@/components/TaskDetailsPanel";
 import ProjectForm from "@/components/ProjectForm";
 import { useEditMode } from "@/components/EditModeProvider";
 
@@ -41,6 +42,8 @@ export default function ProjectView() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [loading, setLoading] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showFutureTodos, setShowFutureTodos] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const projectCompleteInitRef = useRef(true);
   const projectCompletePrevRef = useRef(false);
 
@@ -96,7 +99,7 @@ export default function ProjectView() {
       );
     }
     if (statusFilter !== "All") filtered = filtered.filter((t) => t.status === statusFilter);
-    setFilteredTasks(sortTasksByEtaAndPriority(filtered));
+    setFilteredTasks(filtered);
   }, [allTasks, selectedProject, searchQuery, statusFilter]);
 
   const handleDelete = (taskId: string) => setDeleteConfirm(taskId);
@@ -134,6 +137,7 @@ export default function ProjectView() {
   const openAddProject = () => { setFormMode("addProject"); setEditTask(null); setShowForm(true); };
   const openAddTask = () => { setFormMode("addTask"); setEditTask(null); setShowForm(true); };
   const closeForm = () => { setShowForm(false); setFormMode(null); setEditTask(null); };
+  const handleTaskClick = (task: Task) => setSelectedTask(task);
 
   const getProjectStats = (project: string) => {
     const pt = allTasks.filter((t) => t.project === project);
@@ -292,21 +296,69 @@ export default function ProjectView() {
                 <option value="Not Started">Not Started</option>
                 <option value="In Progress">In Progress</option>
                 <option value="Complete">Complete</option>
+                <option value="Future To-do's">Future To-do&apos;s</option>
                 <option value="On Hold">On Hold</option>
                 <option value="Blocker">Blocker</option>
               </select>
             </div>
 
+            {selectedTask && (
+              <TaskDetailsPanel task={selectedTask} onClose={() => setSelectedTask(null)} />
+            )}
+
             {/* Active tasks */}
             <TaskTable
-              tasks={filteredTasks.filter((t) => t.status !== "Complete")}
+              tasks={filteredTasks.filter((t) => t.status !== "Complete" && t.status !== "Future To-do's")}
               columns={PROJECT_COLUMNS}
               onEdit={handleEdit}
               onDelete={handleDelete}
               onBumpEta={handleBumpEta}
               onInlineUpdate={isEditMode ? handleInlineUpdate : undefined}
+              onTaskClick={handleTaskClick}
               showActions={isEditMode}
-            />
+             />
+
+            {/* Future To-do's collapsible section */}
+            {(() => {
+              const futureFiltered = filteredTasks.filter((t) => t.status === "Future To-do's");
+              if (futureFiltered.length === 0) return null;
+              return (
+                <div className="border border-cyan-200 dark:border-cyan-800 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setShowFutureTodos((v) => !v)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-cyan-50 dark:bg-cyan-950/20 hover:bg-cyan-100 dark:hover:bg-cyan-900/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M5 11h14M6 21h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-sm font-semibold text-cyan-800 dark:text-cyan-200">Future To-do&apos;s</span>
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-cyan-200 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-200 text-xs font-bold">{futureFiltered.length}</span>
+                    </div>
+                    <svg
+                      className={`w-4 h-4 text-cyan-600 dark:text-cyan-400 transition-transform duration-200 ${showFutureTodos ? "rotate-180" : ""}`}
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {showFutureTodos && (
+                    <div className="border-t border-cyan-200 dark:border-cyan-800">
+                      <TaskTable
+                        tasks={futureFiltered}
+                        columns={PROJECT_COLUMNS}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onBumpEta={handleBumpEta}
+                        onInlineUpdate={isEditMode ? handleInlineUpdate : undefined}
+                        onTaskClick={handleTaskClick}
+                        showActions={isEditMode}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Completed tasks collapsible section */}
             {(() => {
@@ -341,6 +393,7 @@ export default function ProjectView() {
                         onDelete={handleDelete}
                         onBumpEta={handleBumpEta}
                         onInlineUpdate={isEditMode ? handleInlineUpdate : undefined}
+                        onTaskClick={handleTaskClick}
                         showActions={isEditMode}
                       />
                     </div>

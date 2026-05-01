@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Task, fetchTasks, deleteTask, updateTask, isOverdue, getProjects, getEmployees, sortTasksByEtaAndPriority, getTaskDisplayName } from "@/utils/api";
+import { Task, fetchTasks, deleteTask, updateTask, isOverdue, getProjects, getEmployees, getTaskDisplayName } from "@/utils/api";
 import TaskTable, { type TaskInlineUpdates } from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
+import TaskDetailsPanel from "@/components/TaskDetailsPanel";
 import { STATUS_STYLES, PRIORITY_STYLES } from "@/components/TaskTable";
 import { useEditMode } from "@/components/EditModeProvider";
 
@@ -30,6 +31,8 @@ export default function TaskManager() {
   const [projectFilter, setProjectFilter] = useState("All");
   const [loading, setLoading] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showFutureTodos, setShowFutureTodos] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -59,7 +62,7 @@ export default function TaskManager() {
     if (statusFilter !== "All") filtered = filtered.filter((t) => t.status === statusFilter);
     if (priorityFilter !== "All") filtered = filtered.filter((t) => t.priority === priorityFilter);
     if (projectFilter !== "All") filtered = filtered.filter((t) => t.project === projectFilter);
-    setFilteredTasks(sortTasksByEtaAndPriority(filtered));
+    setFilteredTasks(filtered);
   }, [tasks, searchQuery, statusFilter, priorityFilter, projectFilter]);
 
   const handleDelete = (taskId: string) => setDeleteConfirm(taskId);
@@ -101,6 +104,7 @@ export default function TaskManager() {
   const inProgressTasks = tasks.filter((t) => t.status === "In Progress").length;
 
   const closeForm = () => { setShowForm(false); setEditTask(null); };
+  const handleTaskClick = (task: Task) => setSelectedTask(task);
 
   return (
     <div className="p-6 space-y-8 bg-slate-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
@@ -149,7 +153,7 @@ export default function TaskManager() {
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
               <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3">Status Breakdown</h3>
               <div className="flex flex-wrap gap-3">
-                {(["Not Started", "In Progress", "Complete", "On Hold", "Blocker"] as const).map((s) => {
+                {(["Not Started", "In Progress", "Complete", "Future To-do's", "On Hold", "Blocker"] as const).map((s) => {
                   const count = tasks.filter((t) => t.status === s).length;
                   return (
                     <div key={s} className="flex items-center gap-2">
@@ -203,6 +207,7 @@ export default function TaskManager() {
                 <option value="Not Started">Not Started</option>
                 <option value="In Progress">In Progress</option>
                 <option value="Complete">Complete</option>
+                <option value="Future To-do's">Future To-do&apos;s</option>
                 <option value="On Hold">On Hold</option>
                 <option value="Blocker">Blocker</option>
               </select>
@@ -229,16 +234,63 @@ export default function TaskManager() {
               )}
             </div>
 
+            {selectedTask && (
+              <TaskDetailsPanel task={selectedTask} onClose={() => setSelectedTask(null)} />
+            )}
+
             {/* Active tasks */}
             <TaskTable
-              tasks={filteredTasks.filter((t) => t.status !== "Complete")}
+              tasks={filteredTasks.filter((t) => t.status !== "Complete" && t.status !== "Future To-do's")}
               columns={ALL_COLUMNS}
               onEdit={handleEdit}
               onDelete={handleDelete}
               onBumpEta={handleBumpEta}
               onInlineUpdate={isEditMode ? handleInlineUpdate : undefined}
+              onTaskClick={handleTaskClick}
               showActions={isEditMode}
             />
+
+            {/* Future To-do's collapsible section */}
+            {(() => {
+              const futureFiltered = filteredTasks.filter((t) => t.status === "Future To-do's");
+              if (futureFiltered.length === 0) return null;
+              return (
+                <div className="border border-cyan-200 dark:border-cyan-800 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setShowFutureTodos((v) => !v)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-cyan-50 dark:bg-cyan-950/30 hover:bg-cyan-100 dark:hover:bg-cyan-950/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M5 11h14M6 21h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-sm font-semibold text-cyan-800 dark:text-cyan-200">Future To-do&apos;s</span>
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-cyan-200 dark:bg-cyan-800 text-cyan-800 dark:text-cyan-200 text-xs font-bold">{futureFiltered.length}</span>
+                    </div>
+                    <svg
+                      className={`w-4 h-4 text-cyan-600 dark:text-cyan-400 transition-transform duration-200 ${showFutureTodos ? "rotate-180" : ""}`}
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {showFutureTodos && (
+                    <div className="border-t border-cyan-200 dark:border-cyan-800">
+                      <TaskTable
+                        tasks={futureFiltered}
+                        columns={ALL_COLUMNS}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onBumpEta={handleBumpEta}
+                        onInlineUpdate={isEditMode ? handleInlineUpdate : undefined}
+                        onTaskClick={handleTaskClick}
+                        showActions={isEditMode}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Completed tasks collapsible section */}
             {(() => {
@@ -273,6 +325,7 @@ export default function TaskManager() {
                         onDelete={handleDelete}
                         onBumpEta={handleBumpEta}
                         onInlineUpdate={isEditMode ? handleInlineUpdate : undefined}
+                        onTaskClick={handleTaskClick}
                         showActions={isEditMode}
                       />
                     </div>
