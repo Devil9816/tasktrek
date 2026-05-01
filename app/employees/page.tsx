@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Task, fetchTasks, isOverdue, getEmployees, updateTask, sortTasksByEtaAndPriority, getTaskDisplayName } from "@/utils/api";
+import { Task, fetchTasks, isOverdue, getEmployees, updateTask, getTaskDisplayName } from "@/utils/api";
 import TaskTable, { type TaskInlineUpdates } from "@/components/TaskTable";
+import TaskDetailsPanel from "@/components/TaskDetailsPanel";
 import { useEditMode } from "@/components/EditModeProvider";
 
 const EMPLOYEE_COLUMNS = [
@@ -32,6 +33,7 @@ export default function EmployeeView() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -63,7 +65,7 @@ export default function EmployeeView() {
           t.taskId.toLowerCase().includes(q)
       );
     }
-    setEmployeeTasks(sortTasksByEtaAndPriority(filtered));
+    setEmployeeTasks(filtered);
   }, [selectedEmployee, allTasks, statusFilter, searchQuery]);
 
   const getStats = (employee: string) => {
@@ -90,6 +92,7 @@ export default function EmployeeView() {
       setAllTasks((p) => p.map((t) => (t.taskId === task.taskId ? prev : t)));
     }
   };
+  const handleTaskClick = (task: Task) => setSelectedTask(task);
 
   return (
     <div className="flex h-[calc(100vh-64px)]">
@@ -112,7 +115,7 @@ export default function EmployeeView() {
               return (
                 <button
                   key={emp}
-                  onClick={() => { setSelectedEmployee(emp); setStatusFilter("All"); setSearchQuery(""); }}
+                  onClick={() => { setSelectedEmployee(emp); setStatusFilter("All"); setSearchQuery(""); setSelectedTask(null); }}
                   className={`w-full text-left px-3 py-3 rounded-xl transition-all duration-150 ${isSelected ? "bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 shadow-sm" : "hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-transparent"}`}
                 >
                   <div className="flex items-center gap-3">
@@ -211,15 +214,21 @@ export default function EmployeeView() {
                 <option value="Not Started">Not Started</option>
                 <option value="In Progress">In Progress</option>
                 <option value="Complete">Complete</option>
+                <option value="Future To-do's">Future To-do&apos;s</option>
                 <option value="On Hold">On Hold</option>
                 <option value="Blocker">Blocker</option>
               </select>
             </div>
 
+            {selectedTask && (
+              <TaskDetailsPanel task={selectedTask} onClose={() => setSelectedTask(null)} />
+            )}
+
             <TaskTable
               tasks={employeeTasks}
               columns={EMPLOYEE_COLUMNS}
               onInlineUpdate={isEditMode ? handleInlineUpdate : undefined}
+              onTaskClick={handleTaskClick}
               showActions={isEditMode}
             />
           </div>

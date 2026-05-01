@@ -8,7 +8,7 @@ export interface ITask extends Document {
   description: string;
   assignedTo: string[];
   eta: string;
-  status: "Not Started" | "In Progress" | "Complete" | "On Hold" | "Blocker";
+  status: "Not Started" | "In Progress" | "Complete" | "Future To-do's" | "On Hold" | "Blocker";
   priority: "High" | "Medium" | "Low";
   createdAt: Date;
   updatedAt: Date;
@@ -54,7 +54,7 @@ const TaskSchema = new Schema<ITask>(
     },
     status: {
       type: String,
-      enum: ["Not Started", "In Progress", "Complete", "On Hold", "Blocker"],
+      enum: ["Not Started", "In Progress", "Complete", "Future To-do's", "On Hold", "Blocker"],
       default: "Not Started",
     },
     priority: {
